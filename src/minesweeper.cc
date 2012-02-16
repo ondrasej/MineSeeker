@@ -24,6 +24,8 @@
 
 namespace mineseeker {
 
+const int MineSweeper::kMineInField = -1;
+
 MineSweeper::MineSweeper(int width, int height)
     : width_(width),
       height_(height),
@@ -59,6 +61,14 @@ void MineSweeper::IncreaseMineCount(int x, int y) {
   }
 }
 
+bool MineSweeper::IsMine(int x, int y) const {
+  DCHECK_GE(x, 0);
+  DCHECK_LT(x, width_);
+  DCHECK_GE(y, 0);
+  DCHECK_LT(y, height_);
+  return mine_field_[x][y] == kMineInField;
+}
+
 int MineSweeper::NumberOfMines() const {
   int num_mines = 0;
   for (int x = 0; x < width_; ++x) {
@@ -80,6 +90,14 @@ void MineSweeper::ResetMinefield(int width, int height) {
     mine_field_[i].clear();
     mine_field_[i].resize(height_, 0);
   }
+}
+
+void MineSweeper::SetMine(int x, int y, bool is_mine) {
+  CHECK_GE(x, 0);
+  CHECK_LT(x, width_);
+  CHECK_GE(y, 0);
+  CHECK_LT(y, height_);
+  mine_field_[x][y] = is_mine ? kMineInField : 0;
 }
 
 }  // namespace mineseeker

@@ -29,8 +29,6 @@ typedef vector<vector<int> > MineField;
 // field from a file.
 class MineSweeper {
  public:
-  static const int kMineInField = -1;
-
   MineSweeper(int width, int height);
 
   // Places or removes mine from the given position in the mine field. This
@@ -60,6 +58,9 @@ class MineSweeper {
   int width() const { return width_; }
   int height() const { return height_; }
  private:
+  // The constant used in mine_field_ for fields that contain a mine.
+  static const int kMineInField;
+
   // Increases the number of mines reported at position x, y.
   void IncreaseMineCount(int x, int y);
   // Increases the number of mines in the neighborhood of this field.
