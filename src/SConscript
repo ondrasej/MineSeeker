@@ -1,0 +1,71 @@
+# Copyright 2012 Ondrej Sykora
+#
+# This file is part of MineSeeker.
+#
+# MineSeeker is free software: you can redistribute it and/or modify it under
+# the terms of the GNU General Public License as published by the Free Software
+# Foundation, either version 3 of the License, or (at your option) any later
+# version.
+#
+# MineSeeker is distributed in the hope that it will be useful, but WITHOUT ANY
+# WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR
+# A PARTICULAR PURPOSE.  See the GNU Lesser General Public License for more
+# details.
+#
+# You should have received a copy of the GNU Lesser General Public License
+# along with MineSeeker.  If not, see <http://www.gnu.org/licenses/>.
+
+# Command-line options and functions for running tests via SCons.
+# TODO(ondrasej): Move this to a separate file.
+# TODO(ondrasej): After using --run-all-tests, --run-test runs all tests again,
+# even if nothing changed.
+AddOption('--run-tests',
+          dest='run-tests',
+          action='store_true',
+          default=False,
+          help='Run updated tests after building')
+AddOption('--run-all-tests',
+          dest='run-all-tests',
+          action='store_true',
+          default=False,
+          help='Run all tests after building')
+
+def runUnitTest(env,target,source):
+  import subprocess
+  app = str(source[0].abspath)
+  if not subprocess.call(app, env={'GLOG_logtostderr' : '1'}):
+    open(str(target[0]),'w').write("PASSED\n")
+
+# A new build tool for discovering and running unit tests from scons. Taken
+# from http://spacepants.org/blog/scons-unit-test
+from SCons.Script.SConscript import SConsEnvironment
+def UnitTest(env, target, source, **kwargs):
+  test_program = env.Program(target, source, **kwargs)
+  run_tests = GetOption('run-tests')
+  run_all_tests = GetOption('run-all-tests')
+  if run_tests or run_all_tests:
+    run_test = env.Command(target + ".passed", target, runUnitTest)
+    if (run_all_tests):
+      env.AlwaysBuild(run_test)
+#    env.Alias('check', run_test)
+  return test_program
+SConsEnvironment.UnitTest = UnitTest
+
+# The actual build configuration starts below:
+###############################################################################
+
+# TODO(ondrasej): Debug/optimization flags?
+# TODO(ondrasej): Add ignored warnings to a list?
+env = Environment(CCFLAGS='-Isrc -g -Wall -Werror -Wno-sign-compare -Iinclude')
+
+env.Library('base',
+            ['minesweeper.cc'],
+            LIBS=['glog'],
+            LIBPATH=['../lib'])
+env.Library('gtest', ['gtest/gtest-all.cc'])
+env.Library('gtest_main', ['gtest/gtest_main.cc'])
+
+env.UnitTest('minesweeper_test',
+	     ['minesweeper_test.cc'],
+	     LIBS=['gtest', 'gtest_main', 'glog'],
+	     LIBPATH=['.', '../lib'])
