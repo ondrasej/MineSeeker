@@ -58,7 +58,7 @@ SConsEnvironment.UnitTest = UnitTest
 # TODO(ondrasej): Add ignored warnings to a list?
 env = Environment(CCFLAGS='-Isrc -g -Wall -Werror -Wno-sign-compare -Iinclude')
 
-env.Library('base',
+env.Library('minesweeper',
             ['minesweeper.cc'],
             LIBS=['glog'],
             LIBPATH=['../lib'])
@@ -67,5 +67,5 @@ env.Library('gtest_main', ['gtest/gtest_main.cc'])
 
 env.UnitTest('minesweeper_test',
 	     ['minesweeper_test.cc'],
-	     LIBS=['gtest', 'gtest_main', 'glog'],
+	     LIBS=['gtest', 'gtest_main', 'glog', 'minesweeper'],
 	     LIBPATH=['.', '../lib'])
