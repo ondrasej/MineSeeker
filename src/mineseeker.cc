@@ -30,6 +30,12 @@ MineSeekerField::MineSeekerField()
   ResetConfigurations();
 }
 
+bool MineSeekerField::IsBound() const {
+  // TODO(ondrasej): Optimize this (e.g. cache the number of active
+  // configurations).
+  return NumberOfActiveConfigurations() == 1;
+}
+
 int MineSeekerField::NumberOfActiveConfigurations() const {
   return std::count(configurations_.begin(), configurations_.end(), true);
 }
@@ -43,6 +49,14 @@ void MineSeekerField::RemoveConfiguration(int configuration) {
 void MineSeekerField::ResetConfigurations() {
   configurations_.clear();
   configurations_.resize(256, true);
+}
+
+void MineSeekerField::SetConfiguration(int configuration) {
+  CHECK_GE(configuration, 0);
+  CHECK_LT(configuration, kNumPossibleConfigurations);
+  CHECK(configurations_[configuration]);
+  std::fill(configurations_.begin(), configurations_.end(), false);
+  configurations_[configuration] = true;
 }
 
 MineSeeker::MineSeeker(const MineSweeper& mine_sweeper)
@@ -172,6 +186,8 @@ void MineSeeker::QueueFieldForUncover(int x, int y) {
 
 void MineSeeker::QueueFieldForUpdate(int x, int y) {
   if (StateAtPosition(x, y) == MineSeekerField::UNCOVERED
+      && x >= 0 && x < mine_sweeper_.width()
+      && y >= 0 && y < mine_sweeper_.height()
       && NumberOfMinesAroundField(x, y) > 0) {
     update_queue_.push(FieldCoordinate(x, y));
   }
@@ -209,6 +225,7 @@ bool MineSeeker::UncoverField(int x, int y) {
 
   if (mine_sweeper_.IsMine(x, y)) {
     // The seeker stepped on a mine and is dead. Kaboom!
+    field->set_state(MineSeekerField::MINE);
     is_dead_ = true;
     return false;
   }
@@ -216,13 +233,16 @@ bool MineSeeker::UncoverField(int x, int y) {
   field->set_state(MineSeekerField::UNCOVERED);
   int num_mines_around = mine_sweeper_.NumberOfMinesAroundField(x, y);
 
-  void (MineSeeker::*operation)(int x, int y) = NULL;
   if (num_mines_around == 0) {
-    // TODO(ondrasej): Mark all neighbors for uncovering.
-    operation = &MineSeeker::QueueFieldForUncover;
+    for (int i = -1; i <= 1; ++i) {
+      for (int j = -1; j <= 1; ++j) {
+        if (i != 0 || j != 0) {
+          QueueFieldForUncover(x + i, x + j);
+        }
+      }
+    }
   } else {
     UpdateConfigurationsAtPosition(x, y);
-    operation = &MineSeeker::QueueFieldForUpdate;
   }
 
   return true;

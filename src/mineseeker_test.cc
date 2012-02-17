@@ -162,4 +162,34 @@ TEST_F(MineSeekerTest, TestAllowedConfigurationsInCorners) {
                                      kNumAllowedConfigurations);
 }
 
+TEST_F(MineSeekerTest, TestUncoverFieldWithMine) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+  
+  EXPECT_EQ(MineSeekerField::HIDDEN, mine_seeker.StateAtPosition(0, 0));
+  EXPECT_FALSE(mine_seeker.is_dead());
+  EXPECT_FALSE(mine_seeker.UncoverField(0, 0));
+  EXPECT_TRUE(mine_seeker.is_dead());
+}
+
+TEST_F(MineSeekerTest, TestUncoverFieldWithNoMine) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  EXPECT_EQ(MineSeekerField::HIDDEN, mine_seeker.StateAtPosition(1, 0));
+  EXPECT_EQ(-1, mine_seeker.NumberOfMinesAroundField(1, 0));
+  EXPECT_FALSE(mine_seeker.is_dead());
+  EXPECT_TRUE(mine_seeker.UncoverField(1, 0));
+  EXPECT_FALSE(mine_seeker.is_dead());
+  EXPECT_EQ(2, mine_seeker.NumberOfMinesAroundField(1, 0));
+  EXPECT_EQ(0, mine_seeker.update_queue_.size());
+
+  EXPECT_EQ(MineSeekerField::HIDDEN, mine_seeker.StateAtPosition(10, 10));
+  EXPECT_EQ(-1, mine_seeker.NumberOfMinesAroundField(10, 10));
+  EXPECT_FALSE(mine_seeker.is_dead());
+  EXPECT_TRUE(mine_seeker.UncoverField(10, 10));
+  EXPECT_FALSE(mine_seeker.is_dead());
+  EXPECT_EQ(0, mine_seeker.NumberOfMinesAroundField(10, 10));
+  EXPECT_EQ(0, mine_seeker.update_queue_.size());
+  EXPECT_EQ(8, mine_seeker.uncover_queue_.size());
+}
+
 }  // namespace mineseeker

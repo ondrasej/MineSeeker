@@ -20,6 +20,7 @@
 
 #include <queue>
 #include "common.h"
+#include "gtest/gtest.h"
 
 namespace mineseeker {
 
@@ -52,6 +53,8 @@ class MineSeekerField {
   // Returns true if this field may contain a mine, i.e. it was not uncovered
   // yet, or it was already proven to contain a mine.
   bool IsPossibleMine() const { return state_ != MINE; }
+
+  bool IsBound() const;
 
   int NumberOfActiveConfigurations() const;
   void RemoveConfiguration(int configuration);
@@ -130,6 +133,8 @@ class MineSeeker {
   // Keeps trace of whether the mineseeker stepped on a mine when uncovering a
   // new field.
   bool is_dead_;
+
+  FRIEND_TEST(MineSeekerTest, TestUncoverFieldWithNoMine);
 };
 
 }  // namespace mineseeker
