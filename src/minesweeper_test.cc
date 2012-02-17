@@ -15,8 +15,6 @@
 // You should have received a copy of the GNU General Public License along with
 // MineSeeker. If not, see <http://www.gnu.org/licenses/>.
 
-#include <iostream>
-
 #include "common.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
