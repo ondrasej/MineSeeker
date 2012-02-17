@@ -30,19 +30,24 @@ class MineSweeper;
 class MineSeekerField {
  public:
   // The state of a mine field from the viewpoint of the mine seeker.
-  enum MineSeekerFieldState {
+  enum State {
     // The field was not visited nor proven to contain a mine yet.
-    HIDDEN,
+    HIDDEN = 0,
     // The field was proven to contain a mine.
-    MINE,
+    MINE = 1,
     // The field was uncovered and did not contain a mine.
-    UNCOVERED,
+    UNCOVERED = 2,
   };
 
   static const int kNumPossibleConfigurations;
 
   MineSeekerField();
 
+  bool IsPossibleConfiguration(int configuration) const {
+    DCHECK_GE(configuration, 0);
+    DCHECK_LT(configuration, kNumPossibleConfigurations);
+    return configurations_[configuration];
+  }
   // Returns true if this field may contain a mine, i.e. it was not uncovered
   // yet, or it was already proven to contain a mine.
   bool IsPossibleMine() const { return state_ != MINE; }
@@ -50,13 +55,13 @@ class MineSeekerField {
   int NumberOfActiveConfigurations() const;
   void RemoveConfiguration(int configuration);
 
-  MineSeekerFieldState state() const { return state_; }
+  State state() const { return state_; }
   const vector<bool>& configurations() const { return configurations_; }
 
  private:
   void ResetConfigurations();
 
-  MineSeekerFieldState state_;
+  State state_;
   vector<bool> configurations_;
 };
 
@@ -64,7 +69,12 @@ class MineSeeker {
  public:
   MineSeeker(const MineSweeper& mine_sweeper);
 
+  // Tests if configuration can be placed at the position (x, y) with respect to
+  // the knowledge about the other fields.
+  bool ConfigurationFitsAt(int configuration, int x, int y) const;
+
   const MineSeekerField& FieldAtPosition(int x, int y) const;
+  MineSeekerField::State StateAtPosition(int x, int y) const;
   void Solve();
 
   bool is_dead() const { return is_dead_; }
@@ -77,17 +87,16 @@ class MineSeeker {
                                         int x,
                                         int cx,
                                         int cy) const;
-  // Tests if configuration can be placed at the position (x, y) with respect to
-  // the knowledge about the other fields.
-  bool ConfigurationFitsAt(int configuration, int x, int y) const;
-
   // Tests if the current state of the seeker allows for a mine at the position
   // (x, y). The state allows the mine if it has already proved that the field
   // contains the mine or the field was not uncovered yet.
   // Returns false if the coordinates are outside the mine field.
   bool IsPossibleMineAt(int x, int y) const;
 
+  // Resets the state of the mine seeker.
   void ResetState();
+
+  void UpdateConfigurationsAtPosition(int x, int y);
 
   // Reference to the mine field on which the mine seeker works.
   const MineSweeper& mine_sweeper_;

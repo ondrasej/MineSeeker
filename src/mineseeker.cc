@@ -63,7 +63,7 @@ const int kMinePositionToConfigurationBit[] = {
   5,  6, 7,
 };
 
-inline bool IsBitSet(int bit, int value) {
+inline bool IsBitSet(int value, int bit) {
   return 0 != (value & (1 << bit));
 }
 
@@ -85,8 +85,9 @@ bool MineSeeker::ConfigurationFitsWithSingleField(int configuration,
                                                   int cy) const {
   const bool configuration_has_mine = ConfigurationHasMineAt(configuration,
                                                              cx, cy);
-  const bool state_allows_mine = IsPossibleMineAt(x + cx, y + cy);
-  return configuration_has_mine == state_allows_mine;
+  const MineSeekerField::State state = StateAtPosition(x + cx, y + cy);
+  return state == MineSeekerField::HIDDEN
+      || configuration_has_mine == (state == MineSeekerField::MINE);
 }
 
 bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
@@ -99,8 +100,9 @@ bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
   for (int cx = -1; cx <= 1; ++cx) {
     for (int cy = -1; cy <= 1; ++cy) {
       if (cx != 0 || cy != 0) {
-        if (!ConfigurationFitsWithSingleField(configuration, x, y, cx, cy))
+        if (!ConfigurationFitsWithSingleField(configuration, x, y, cx, cy)) {
           return false;
+        }
       }
     }
   }
@@ -113,6 +115,16 @@ const MineSeekerField& MineSeeker::FieldAtPosition(int x, int y) const {
   CHECK_GE(y, 0);
   CHECK_LT(y, mine_sweeper_.height());
   return state_[x][y];
+}
+
+MineSeekerField::State MineSeeker::StateAtPosition(int x, int y) const {
+  if (x < 0
+      || y < 0
+      || x >= mine_sweeper_.width()
+      || y >= mine_sweeper_.height()) {
+    return MineSeekerField::UNCOVERED;
+  }
+  return state_[x][y].state();
 }
 
 bool MineSeeker::IsPossibleMineAt(int x, int y) const {
@@ -131,9 +143,44 @@ void MineSeeker::ResetState() {
   for (int i = 0; i < state_.size(); ++i) {
     state_[i].resize(mine_sweeper_.height());
   }
+
+  // Filter possible configurations for the border.
+  for (int x = 0; x < mine_sweeper_.width(); ++x) {
+    UpdateConfigurationsAtPosition(x, 0);
+    UpdateConfigurationsAtPosition(x, mine_sweeper_.height() - 1);
+  }
+  for (int y = 1; y < mine_sweeper_.height() - 1; ++y) {
+    UpdateConfigurationsAtPosition(0, y);
+    UpdateConfigurationsAtPosition(mine_sweeper_.width() - 1, y);
+  }
 }
 
 void MineSeeker::Solve() {
+}
+
+void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {
+  CHECK_GE(x, 0);
+  CHECK_LT(x, mine_sweeper_.width());
+  CHECK_GE(y, 0);
+  CHECK_LT(y, mine_sweeper_.height());
+
+  bool changed_configurations = false;
+  MineSeekerField* const field = &state_[x][y];
+  for (int configuration = 0;
+       configuration < MineSeekerField::kNumPossibleConfigurations;
+       ++configuration) {
+    if (field->IsPossibleConfiguration(configuration)) {
+      if (!ConfigurationFitsAt(configuration, x, y)) {
+        field->RemoveConfiguration(configuration);
+        changed_configurations = true;
+      }
+    }
+  }
+
+  if (changed_configurations) {
+    // TODO(ondrasej): Check if we proved out some new mines or clear fields;
+    // check consistency with neighbor fields.
+  }
 }
 
 }  // namespace mineseeker

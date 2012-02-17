@@ -61,10 +61,61 @@ TEST_F(MineSeekerTest, TestCreate) {
     for (int y = 0; y < kHeight; ++y) {
       const MineSeekerField& field = mine_seeker.FieldAtPosition(x, y);
       EXPECT_EQ(MineSeekerField::HIDDEN, field.state());
-      EXPECT_TRUE(field.configurations()[0]);
+      EXPECT_TRUE(field.configurations()[0])
+          << "Configuration with no mines is not allowed at " << x << " " << y
+          << std::endl
+          << "Number of allowed configurations: "
+          << field.NumberOfActiveConfigurations();
       if (x > 0 && x < kWidth - 1 && y > 0 && y < kHeight - 1) {
         EXPECT_EQ(MineSeekerField::kNumPossibleConfigurations,
                   field.NumberOfActiveConfigurations());
+      }
+    }
+  }
+
+  const int kCornerFieldX[] = { 0, 0, kWidth - 1, kWidth - 1 };
+  const int kCornerFieldY[] = { 0, kHeight - 1, 0, kHeight - 1 };
+  const int kNumCornerFields = ARRAYSIZE(kCornerFieldX);
+  CHECK_EQ(kNumCornerFields, ARRAYSIZE(kCornerFieldY));
+  const int kExpectedAllowedConfigurationsInCorner = 8;
+  for (int i = 0; i < kNumCornerFields; ++i) {
+    const int x = kCornerFieldX[i];
+    const int y = kCornerFieldY[i];
+    const MineSeekerField& field = mine_seeker.FieldAtPosition(x, y);
+    EXPECT_EQ(kExpectedAllowedConfigurationsInCorner,
+              field.NumberOfActiveConfigurations());
+  }
+
+  const int kExpectedAllowedConfigurationsOnEdge = 32;
+  for (int x = 1; x < kWidth - 1; ++x) {
+    const MineSeekerField& top_field = mine_seeker.FieldAtPosition(x, 0);
+    EXPECT_EQ(kExpectedAllowedConfigurationsOnEdge,
+              top_field.NumberOfActiveConfigurations());
+    const MineSeekerField& bottom_field =
+        mine_seeker.FieldAtPosition(x, kHeight - 1);
+    EXPECT_EQ(kExpectedAllowedConfigurationsOnEdge,
+              bottom_field.NumberOfActiveConfigurations());
+  }
+  for (int y = 1; y < kHeight - 1; ++y) {
+    const MineSeekerField& left_field = mine_seeker.FieldAtPosition(0, y);
+    EXPECT_EQ(kExpectedAllowedConfigurationsOnEdge,
+              left_field.NumberOfActiveConfigurations());
+    const MineSeekerField& right_field =
+        mine_seeker.FieldAtPosition(kWidth - 1, y);
+    EXPECT_EQ(kExpectedAllowedConfigurationsOnEdge,
+              right_field.NumberOfActiveConfigurations());
+  }
+}
+
+TEST_F(MineSeekerTest, TestConfigurationFitsAt) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  for (int x = 1; x < kWidth - 1; ++x) {
+    for (int y = 1; y < kHeight - 1; ++y) {
+      for (int configuration = 0;
+           configuration < MineSeekerField::kNumPossibleConfigurations;
+           ++configuration) {
+        EXPECT_TRUE(mine_seeker.ConfigurationFitsAt(0, x, y));
       }
     }
   }
