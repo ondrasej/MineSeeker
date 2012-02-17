@@ -29,6 +29,10 @@ typedef vector<vector<int> > MineField;
 // field from a file.
 class MineSweeper {
  public:
+  // The constant used in mine_field_ for fields that contain a mine.
+  static const int kMineInField;
+
+  // Initializes a new mine field of the given size with no mines in it.
   MineSweeper(int width, int height);
 
   // Places or removes mine from the given position in the mine field. This
@@ -37,6 +41,10 @@ class MineSweeper {
   
   // Checks if at the position (x, y) is a mine.
   bool IsMine(int x, int y) const;
+  // Returns the number of mines around the given field. This method only works
+  // for fields that themselves do not contain a mine. In such case, this method
+  // returns kMineInField.
+  int NumberOfMinesAroundField(int x, int y) const;
 
   // Loads the mine field from a file. Returns NULL if loading of the mine field
   // failed. Upon success, returns the minefield; the caller is responsible for
@@ -57,10 +65,13 @@ class MineSweeper {
   // The size of the mine field.
   int width() const { return width_; }
   int height() const { return height_; }
- private:
-  // The constant used in mine_field_ for fields that contain a mine.
-  static const int kMineInField;
 
+  // Prints the matrix with mine counts to the string 'out'. Erases any content
+  // that was stored in out previously. If this method is called before the mine
+  // field is closed, the matrix will only have non-zero values on the fields
+  // with mines.
+  void PrintMineCountsToString(string* out) const;
+ private:
   // Increases the number of mines reported at position x, y.
   void IncreaseMineCount(int x, int y);
   // Increases the number of mines in the neighborhood of this field.

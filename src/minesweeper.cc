@@ -18,6 +18,7 @@
 #include "minesweeper.h"
 
 #include <algorithm>
+#include <sstream>
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -34,6 +35,7 @@ MineSweeper::MineSweeper(int width, int height)
 }
 
 void MineSweeper::CloseMineField() {
+  is_closed_ = true;
   for (int x = 0; x < width_; ++x) {
     for (int y = 0; y < height_; ++y) {
       if (mine_field_[x][y] == kMineInField) {
@@ -43,11 +45,23 @@ void MineSweeper::CloseMineField() {
   }
 }
 
+void MineSweeper::PrintMineCountsToString(string* out) const {
+  CHECK_NOTNULL(out);
+  std::stringstream buffer(std::stringstream::out);
+  for (int y = 0; y < height_; ++y) {
+    for (int x = 0; x < width_; ++x) {
+      buffer << NumberOfMinesAroundField(x, y) << " ";
+    }
+    buffer << std::endl;
+  }
+  *out = buffer.str();
+}
+
 void MineSweeper::IncreaseNeighborMineCounts(int x, int y) {
   for (int i = -1; i < 2; ++i) {
     for (int j = -1; j < 2; ++j) {
-      if (i != 0 && j != 0) {
-        IncreaseNeighborMineCounts(x + i, y + j);
+      if (i != 0 || j != 0) {
+        IncreaseMineCount(x + i, y + j);
       }
     }
   }
@@ -62,11 +76,7 @@ void MineSweeper::IncreaseMineCount(int x, int y) {
 }
 
 bool MineSweeper::IsMine(int x, int y) const {
-  DCHECK_GE(x, 0);
-  DCHECK_LT(x, width_);
-  DCHECK_GE(y, 0);
-  DCHECK_LT(y, height_);
-  return mine_field_[x][y] == kMineInField;
+  return kMineInField == NumberOfMinesAroundField(x, y);
 }
 
 int MineSweeper::NumberOfMines() const {
@@ -78,6 +88,14 @@ int MineSweeper::NumberOfMines() const {
     num_mines += mines_in_column;
   }
   return num_mines;
+}
+
+int MineSweeper::NumberOfMinesAroundField(int x, int y) const {
+  CHECK_GE(x, 0);
+  CHECK_LT(x, width_);
+  CHECK_GE(y, 0);
+  CHECK_LT(y, height_);
+  return mine_field_[x][y];
 }
 
 void MineSweeper::ResetMinefield(int width, int height) {

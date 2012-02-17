@@ -15,6 +15,8 @@
 // You should have received a copy of the GNU General Public License along with
 // MineSeeker. If not, see <http://www.gnu.org/licenses/>.
 
+#include <iostream>
+
 #include "common.h"
 #include "glog/logging.h"
 #include "gtest/gtest.h"
@@ -22,12 +24,52 @@
 
 namespace mineseeker {
 
+TEST(MineSweeperTest, TestCloseMineField) {
+  const int kWidth = 30;
+  const int kHeight = 30;
+  MineSweeper mine_sweeper(kWidth, kHeight);
+
+  const int kMineX[] = { 1, 0, 10, 3, 20, 29 };
+  const int kMineY[] = { 1, 0, 15, 8, 19, 0 };
+  const int kNumMines = ARRAYSIZE(kMineX);
+  CHECK_EQ(kNumMines, ARRAYSIZE(kMineY));
+ 
+  for (int i = 0; i < kNumMines; ++i) {
+    const int x = kMineX[i];
+    const int y = kMineY[i];
+    mine_sweeper.SetMine(x, y, true);
+  }
+
+  EXPECT_FALSE(mine_sweeper.is_closed());
+  EXPECT_EQ(kNumMines, mine_sweeper.NumberOfMines());
+  mine_sweeper.CloseMineField();
+  EXPECT_TRUE(mine_sweeper.is_closed());
+  EXPECT_EQ(kNumMines, mine_sweeper.NumberOfMines());
+
+  const int kTestX[] = { 1, 0, 2, 0, 2, 0,  0, 8, 2, };
+  const int kTestY[] = { 0, 1, 0, 2, 2, 0, 10, 8, 9, };
+  const int kExpectedMines[] =
+      { 2, 2, 1, 1, 1, MineSweeper::kMineInField, 0, 0, 1 };
+  const int kNumTests = ARRAYSIZE(kTestX);
+  CHECK_EQ(kNumTests, ARRAYSIZE(kTestY));
+  CHECK_EQ(kNumTests, ARRAYSIZE(kExpectedMines));
+
+  for (int i = 0; i < kNumTests; ++i) {
+    const int x = kTestX[i];
+    const int y = kTestY[i];
+    const int expected_num_mines = kExpectedMines[i];
+    const int num_mines = mine_sweeper.NumberOfMinesAroundField(x, y);
+    EXPECT_EQ(expected_num_mines, num_mines);
+  }
+}
+
 TEST(MineSweeperTest, TestCreate) {
   const int kWidth = 30;
   const int kHeight = 20;
   MineSweeper mine_sweeper(kWidth, kHeight);
   EXPECT_EQ(kWidth, mine_sweeper.width());
   EXPECT_EQ(kHeight, mine_sweeper.height());
+  EXPECT_FALSE(mine_sweeper.is_closed());
 
   EXPECT_EQ(0, mine_sweeper.NumberOfMines());
   for (int x = 0; x < kWidth; ++x) {
@@ -48,6 +90,7 @@ TEST(MineSweeperTest, TestSetMine) {
 
   MineSweeper mine_sweeper(kWidth, kHeight);
   EXPECT_EQ(0, mine_sweeper.NumberOfMines());
+  EXPECT_FALSE(mine_sweeper.is_closed());
 
   for (int i = 0; i < kNumMines; ++i) {
     const int x = kMineX[i];
@@ -62,6 +105,23 @@ TEST(MineSweeperTest, TestSetMine) {
 
     const int kExpectedNumMinesPostSet = i + 1;
     EXPECT_EQ(kExpectedNumMinesPostSet, mine_sweeper.NumberOfMines());
+    EXPECT_FALSE(mine_sweeper.is_closed());
+  }
+
+  for (int i = 0; i < kNumMines; ++i) {
+    const int x = kMineX[i];
+    const int y = kMineY[i];
+
+    const int kExpectedNumMinesPreSet = kNumMines - i;
+    EXPECT_EQ(kExpectedNumMinesPreSet, mine_sweeper.NumberOfMines());
+
+    EXPECT_TRUE(mine_sweeper.IsMine(x, y));
+    mine_sweeper.SetMine(x, y, false);
+    EXPECT_FALSE(mine_sweeper.IsMine(x, y));
+
+    const int kExpectedNumMinesPostSet = kNumMines - i - 1;
+    EXPECT_EQ(kExpectedNumMinesPostSet, mine_sweeper.NumberOfMines());
+    EXPECT_FALSE(mine_sweeper.is_closed());
   }
 }
 
