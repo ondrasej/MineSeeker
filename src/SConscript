@@ -47,7 +47,6 @@ def UnitTest(env, target, source, **kwargs):
     run_test = env.Command(target + ".passed", target, runUnitTest)
     if (run_all_tests):
       env.AlwaysBuild(run_test)
-#    env.Alias('check', run_test)
   return test_program
 SConsEnvironment.UnitTest = UnitTest
 
