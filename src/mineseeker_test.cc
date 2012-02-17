@@ -121,4 +121,45 @@ TEST_F(MineSeekerTest, TestConfigurationFitsAt) {
   }
 }
 
+namespace {
+void CheckAllowedConfigurationsForField(const MineSeekerField& field,
+                                        const int* allowed_configurations,
+                                        int num_allowed_configurations) {
+  CHECK_NOTNULL(allowed_configurations);
+  CHECK_GE(num_allowed_configurations, 0);
+  std::set<int> configurations(
+      allowed_configurations,
+      allowed_configurations + num_allowed_configurations);
+  for (int configuration = 0;
+       configuration < MineSeekerField::kNumPossibleConfigurations;
+       ++configuration) {
+    const bool configuration_is_allowed =
+        configurations.count(configuration) > 0;
+    EXPECT_EQ(configuration_is_allowed,
+              field.IsPossibleConfiguration(configuration));
+  }
+}
+}  // namespace
+
+TEST_F(MineSeekerTest, TestAllowedConfigurationsInCorners) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  const int kNumAllowedConfigurations = 8;
+
+  const int kAllowedConfigurationsInLeftTopCorner[] =
+      { 0, 16, 64, 80, 128, 144, 192, 208 };
+  const MineSeekerField& top_left_field = mine_seeker.FieldAtPosition(0, 0);
+  CheckAllowedConfigurationsForField(top_left_field,
+                                     kAllowedConfigurationsInLeftTopCorner,
+                                     kNumAllowedConfigurations);
+
+  const int kAllowedConfigurationsInBottomRightCorner[] =
+      { 0, 1, 2, 3, 8, 9, 10, 11 };
+  const MineSeekerField& bottom_righ_field =
+      mine_seeker.FieldAtPosition(kWidth - 1, kHeight - 1);
+  CheckAllowedConfigurationsForField(bottom_righ_field,
+                                     kAllowedConfigurationsInBottomRightCorner,
+                                     kNumAllowedConfigurations);
+}
+
 }  // namespace mineseeker

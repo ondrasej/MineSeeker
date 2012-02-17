@@ -76,6 +76,17 @@ bool ConfigurationHasMineAt(int configuration, int x, int y) {
   const int bit = kMinePositionToConfigurationBit[linear_index];
   return IsBitSet(configuration, bit);
 }
+
+int NumberOfMinesInConfiguration(int configuration) {
+  int num_mines = 0;
+  // TODO(ondrasej): A more efficient implementation...
+  for (int i = 0; i < 8; ++i) {
+    if ((configuration & (1 << i)) != 0) {
+      ++num_mines;
+    }
+  }
+  return num_mines;
+}
 }  // namespace
 
 bool MineSeeker::ConfigurationFitsWithSingleField(int configuration,
@@ -97,6 +108,14 @@ bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
   DCHECK_LT(x, mine_sweeper_.width());
   DCHECK_GE(y, 0);
   DCHECK_LT(y, mine_sweeper_.height());
+
+  int num_mines_around = NumberOfMinesAroundField(x, y);
+  if (num_mines_around >= 0) {
+    if (num_mines_around != NumberOfMinesInConfiguration(configuration)) {
+      return false;
+    }
+  }
+
   for (int cx = -1; cx <= 1; ++cx) {
     for (int cy = -1; cy <= 1; ++cy) {
       if (cx != 0 || cy != 0) {
@@ -137,6 +156,27 @@ bool MineSeeker::IsPossibleMineAt(int x, int y) const {
   return state_[x][y].IsPossibleMine();
 }
 
+int MineSeeker::NumberOfMinesAroundField(int x, int y) const {
+  if (StateAtPosition(x, y) == MineSeekerField::UNCOVERED) {
+    return mine_sweeper_.NumberOfMinesAroundField(x, y);
+  } else {
+    return -1;
+  }
+}
+
+void MineSeeker::QueueFieldForUncover(int x, int y) {
+  if (StateAtPosition(x, y) == MineSeekerField::HIDDEN) {
+    uncover_queue_.push(FieldCoordinate(x, y));
+  }
+}
+
+void MineSeeker::QueueFieldForUpdate(int x, int y) {
+  if (StateAtPosition(x, y) == MineSeekerField::UNCOVERED
+      && NumberOfMinesAroundField(x, y) > 0) {
+    update_queue_.push(FieldCoordinate(x, y));
+  }
+}
+
 void MineSeeker::ResetState() {
   state_.clear();
   state_.resize(mine_sweeper_.width());
@@ -156,6 +196,36 @@ void MineSeeker::ResetState() {
 }
 
 void MineSeeker::Solve() {
+}
+
+bool MineSeeker::UncoverField(int x, int y) {
+  CHECK_GE(x, 0);
+  CHECK_LT(x, mine_sweeper_.width());
+  CHECK_GE(y, 0);
+  CHECK_LT(y, mine_sweeper_.height());
+
+  MineSeekerField* const field = &state_[x][y];
+  CHECK_EQ(MineSeekerField::HIDDEN, field->state());
+
+  if (mine_sweeper_.IsMine(x, y)) {
+    // The seeker stepped on a mine and is dead. Kaboom!
+    is_dead_ = true;
+    return false;
+  }
+  
+  field->set_state(MineSeekerField::UNCOVERED);
+  int num_mines_around = mine_sweeper_.NumberOfMinesAroundField(x, y);
+
+  void (MineSeeker::*operation)(int x, int y) = NULL;
+  if (num_mines_around == 0) {
+    // TODO(ondrasej): Mark all neighbors for uncovering.
+    operation = &MineSeeker::QueueFieldForUncover;
+  } else {
+    UpdateConfigurationsAtPosition(x, y);
+    operation = &MineSeeker::QueueFieldForUpdate;
+  }
+
+  return true;
 }
 
 void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {

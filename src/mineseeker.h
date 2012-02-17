@@ -18,6 +18,7 @@
 #ifndef MINESEEKER_MINESEEKER_H_
 #define MINESEEKER_MINESEEKER_H_
 
+#include <queue>
 #include "common.h"
 
 namespace mineseeker {
@@ -54,8 +55,10 @@ class MineSeekerField {
 
   int NumberOfActiveConfigurations() const;
   void RemoveConfiguration(int configuration);
+  void SetConfiguration(int configuration);
 
   State state() const { return state_; }
+  void set_state(State state) { state_ = state; }
   const vector<bool>& configurations() const { return configurations_; }
 
  private:
@@ -63,6 +66,14 @@ class MineSeekerField {
 
   State state_;
   vector<bool> configurations_;
+};
+
+struct FieldCoordinate {
+  int x;
+  int y;
+  
+  FieldCoordinate(int x_coord, int y_coord)
+      : x(x_coord), y(y_coord) {}
 };
 
 class MineSeeker {
@@ -77,8 +88,12 @@ class MineSeeker {
   MineSeekerField::State StateAtPosition(int x, int y) const;
   void Solve();
 
+  void MarkAsMine(int x, int y);
+  bool UncoverField(int x, int y);
+
   bool is_dead() const { return is_dead_; }
   const MineSweeper& mine_sweeper() const { return mine_sweeper_; }
+
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
 
@@ -92,11 +107,21 @@ class MineSeeker {
   // contains the mine or the field was not uncovered yet.
   // Returns false if the coordinates are outside the mine field.
   bool IsPossibleMineAt(int x, int y) const;
+  // Returns the number of mines around the given field. The field must be
+  // uncovered for this method to return the number. For fields marked with
+  // mines or hidden fields, this method returns -1.
+  int NumberOfMinesAroundField(int x, int y) const;
+
+  void QueueFieldForUncover(int x, int y);
+  void QueueFieldForUpdate(int x, int y);
 
   // Resets the state of the mine seeker.
   void ResetState();
 
   void UpdateConfigurationsAtPosition(int x, int y);
+
+  std::queue<FieldCoordinate> uncover_queue_;
+  std::queue<FieldCoordinate> update_queue_;
 
   // Reference to the mine field on which the mine seeker works.
   const MineSweeper& mine_sweeper_;
