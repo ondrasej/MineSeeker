@@ -23,6 +23,8 @@
 
 namespace mineseeker {
 
+const int MineSeekerField::kNumPossibleConfigurations = 256;
+
 MineSeekerField::MineSeekerField()
     : state_(HIDDEN) {
   ResetConfigurations();
@@ -44,7 +46,8 @@ void MineSeekerField::ResetConfigurations() {
 }
 
 MineSeeker::MineSeeker(const MineSweeper& mine_sweeper)
-    : mine_sweeper_(mine_sweeper) {
+    : mine_sweeper_(mine_sweeper),
+      is_dead_(false) {
   CHECK(mine_sweeper_.is_closed());
   ResetState();
 }
@@ -102,6 +105,14 @@ bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
     }
   }
   return true;
+}
+
+const MineSeekerField& MineSeeker::FieldAtPosition(int x, int y) const {
+  CHECK_GE(x, 0);
+  CHECK_LT(x, mine_sweeper_.width());
+  CHECK_GE(y, 0);
+  CHECK_LT(y, mine_sweeper_.height());
+  return state_[x][y];
 }
 
 bool MineSeeker::IsPossibleMineAt(int x, int y) const {

@@ -39,7 +39,7 @@ class MineSeekerField {
     UNCOVERED,
   };
 
-  static const int kNumPossibleConfigurations = 256;
+  static const int kNumPossibleConfigurations;
 
   MineSeekerField();
 
@@ -64,8 +64,11 @@ class MineSeeker {
  public:
   MineSeeker(const MineSweeper& mine_sweeper);
 
+  const MineSeekerField& FieldAtPosition(int x, int y) const;
   void Solve();
 
+  bool is_dead() const { return is_dead_; }
+  const MineSweeper& mine_sweeper() const { return mine_sweeper_; }
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
 
@@ -90,6 +93,9 @@ class MineSeeker {
   const MineSweeper& mine_sweeper_;
   // The state of the mine seeker.
   MineSeekerState state_;
+  // Keeps trace of whether the mineseeker stepped on a mine when uncovering a
+  // new field.
+  bool is_dead_;
 };
 
 }  // namespace mineseeker
