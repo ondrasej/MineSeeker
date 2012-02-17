@@ -18,7 +18,7 @@
 #ifndef MINESEEKER_SCOPED_PTR_H_
 #define MINESEEKER_SCOPED_PTR_H_
 
-#include "base/common.h"
+#include "glog/logging.h"
 
 // A Boost-like scoped_ptr class. Holds a pointer and guarantees that this
 // pointer is deleted when the scoped_ptr object is destroyed. Moreover, the
