@@ -146,6 +146,27 @@ bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
   return true;
 }
 
+void MineSeeker::DebugString(string* out) const {
+  *out = "\n";
+  for (int y = 0; y < mine_sweeper_.height(); ++y) {
+    for (int x = 0; x < mine_sweeper_.width(); ++x) {
+      switch (StateAtPosition(x, y)) {
+        case MineSeekerField::HIDDEN:
+          out->push_back('.');
+          break;
+        case MineSeekerField::MINE:
+          out->push_back('*');
+          break;
+        case MineSeekerField::UNCOVERED:
+          const int num_mines = NumberOfMinesAroundField(x, y);
+          out->push_back(num_mines == 0 ? ' ' : '0' + num_mines);
+          break;
+      }
+    }
+    out->push_back('\n');
+  }
+}
+
 const MineSeekerField& MineSeeker::FieldAtPosition(int x, int y) const {
   CheckCoordinatesAreValid(x, y);
   return state_[x][y];
@@ -214,6 +235,7 @@ int MineSeeker::NumberOfMinesAroundField(int x, int y) const {
 
 void MineSeeker::QueueFieldForUncover(int x, int y) {
   if (StateAtPosition(x, y) == MineSeekerField::HIDDEN) {
+    //LOG(INFO) << "Queing " << x << " " << y << " for uncovering";
     uncover_queue_.push(FieldCoordinate(x, y));
   }
 }
@@ -247,17 +269,31 @@ void MineSeeker::ResetState() {
 
 bool MineSeeker::Solve() {
   while (!IsSolved()) {
-    SolveStep();
+    if (!SolveStep()) {
+      break;
+    }
   }
-  return !is_dead();
+  return IsSolved() && !is_dead();
 }
 
-void MineSeeker::SolveStep() {
+bool MineSeeker::SolveStep() {
   if (!uncover_queue_.empty()) {
-
+    const FieldCoordinate& coordinates = uncover_queue_.front();
+    if (MineSeekerField::HIDDEN == StateAtPosition(coordinates.x,
+                                                   coordinates.y)) {
+      //LOG(INFO) << "Uncovering: " << coordinates.x << " " << coordinates.y;
+      UncoverField(coordinates.x, coordinates.y);
+    }
+    uncover_queue_.pop();
+    return true;
   } else if (!update_queue_.empty()) {
-    
+    const FieldCoordinate& coordinates = update_queue_.front();
+    //LOG(INFO) << "Updating: " << coordinates.x << " " << coordinates.y;
+    UpdateConfigurationsAtPosition(coordinates.x, coordinates.y);
+    update_queue_.pop();
+    return true;
   }
+  return false;
 }
 
 bool MineSeeker::UncoverField(int x, int y) {
@@ -268,6 +304,7 @@ bool MineSeeker::UncoverField(int x, int y) {
 
   if (mine_sweeper_.IsMine(x, y)) {
     // The seeker stepped on a mine and is dead. Kaboom!
+    LOG(INFO) << "Death on the position " << x << " " << y;
     field->set_state(MineSeekerField::MINE);
     is_dead_ = true;
     return false;
@@ -277,15 +314,23 @@ bool MineSeeker::UncoverField(int x, int y) {
   int num_mines_around = mine_sweeper_.NumberOfMinesAroundField(x, y);
 
   if (num_mines_around == 0) {
+    // TODO(ondrasej): Refactor this code.
     for (int i = -1; i <= 1; ++i) {
       for (int j = -1; j <= 1; ++j) {
         if (i != 0 || j != 0) {
-          QueueFieldForUncover(x + i, x + j);
+          QueueFieldForUncover(x + i, y + j);
         }
       }
     }
   } else {
     UpdateConfigurationsAtPosition(x, y);
+    for (int i = -1; i <= 1; ++i) {
+      for (int j = -1; j <= 1; ++j) {
+        if (i != 0 || j != 0) {
+          QueueFieldForUpdate(x + i, y + j);
+        }
+      }
+    }
   }
 
   return true;
@@ -315,6 +360,8 @@ void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {
 }
 
 namespace {
+// Coordinates for converting bits in the ID of a configuration to the relative
+// coordinates of the field to which the bit refers.
 const int kMineRelativePositionX[] = { -1, 0, 1, -1, 1, -1, 0, 1 };
 const int kMineRelativePositionY[] = { -1, -1, -1, 0, 0, 1, 1, 1 };
 }

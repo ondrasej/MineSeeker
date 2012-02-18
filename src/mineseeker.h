@@ -142,6 +142,8 @@ class MineSeeker {
   // Returns the MineSweeper instance on which the game is played.
   const MineSweeper& mine_sweeper() const { return mine_sweeper_; }
 
+  void DebugString(string* out) const;
+
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
 
@@ -164,7 +166,7 @@ class MineSeeker {
   void ResetState();
 
   // Performs a single step of the solution 
-  void SolveStep();
+  bool SolveStep();
 
   // Updates the available configurations at the given position based on the
   // fields around the position.

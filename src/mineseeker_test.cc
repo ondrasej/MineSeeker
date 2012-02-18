@@ -172,6 +172,16 @@ TEST_F(MineSeekerTest, TestMarkAsMine) {
   EXPECT_TRUE(mine_seeker.IsPossibleMineAt(0, 0));
 }
 
+TEST_F(MineSeekerTest, TestSolve) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  mine_seeker.UncoverField(10, 10);
+  EXPECT_TRUE(mine_seeker.Solve());
+
+  string debug_output;
+  mine_seeker.DebugString(&debug_output);
+}
+
 TEST_F(MineSeekerTest, TestUncoverFieldWithMine) {
   MineSeeker mine_seeker(*mine_sweeper_);
   
