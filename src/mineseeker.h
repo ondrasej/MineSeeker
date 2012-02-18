@@ -151,8 +151,14 @@ class MineSeeker {
   // Resets the state of the mine seeker.
   void ResetState();
 
+  // Updates the available configurations at the given position based on the
+  // fields around the position.
   void UpdateConfigurationsAtPosition(int x, int y);
 
+  // The queues for fields that should be uncovered by the algorithm and fields
+  // that should be updated (after something in their neighborhood changed). The
+  // algorithm processes them asynchronously to avoid too deep recursion and to
+  // give uncovering a higher priority.
   std::queue<FieldCoordinate> uncover_queue_;
   std::queue<FieldCoordinate> update_queue_;
 
