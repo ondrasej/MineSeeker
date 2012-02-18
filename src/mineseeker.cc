@@ -217,7 +217,7 @@ void MineSeeker::MarkAsMine(int x, int y) {
   switch (state) {
     case MineSeekerField::HIDDEN:
       state_[x][y].set_state(MineSeekerField::MINE);
-      // TODO(ondrasej): Queue the neighbors for update
+      QueueNeighborsForUpdate(x, y);
     case MineSeekerField::MINE:
       break;
     default:
@@ -246,6 +246,16 @@ void MineSeeker::QueueFieldForUpdate(int x, int y) {
       && y >= 0 && y < mine_sweeper_.height()
       && NumberOfMinesAroundField(x, y) > 0) {
     update_queue_.push(FieldCoordinate(x, y));
+  }
+}
+
+void MineSeeker::QueueNeighborsForUpdate(int x, int y) {
+  for (int i = -1; i <= 1; ++i) {
+    for (int j = -1; j <= 1; ++j) {
+      if (i != 0 || j != 0) {
+        QueueFieldForUpdate(x + i, y + j);
+      }
+    }
   }
 }
 
@@ -324,13 +334,7 @@ bool MineSeeker::UncoverField(int x, int y) {
     }
   } else {
     UpdateConfigurationsAtPosition(x, y);
-    for (int i = -1; i <= 1; ++i) {
-      for (int j = -1; j <= 1; ++j) {
-        if (i != 0 || j != 0) {
-          QueueFieldForUpdate(x + i, y + j);
-        }
-      }
-    }
+    QueueNeighborsForUpdate(x, y);
   }
 
   return true;

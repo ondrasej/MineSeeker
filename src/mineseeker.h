@@ -160,6 +160,7 @@ class MineSeeker {
                                         int cy) const;
 
   void QueueFieldForUncover(int x, int y);
+  void QueueNeighborsForUpdate(int x, int y);
   void QueueFieldForUpdate(int x, int y);
 
   // Resets the state of the mine seeker.
