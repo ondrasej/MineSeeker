@@ -45,6 +45,8 @@ class MineSeekerField {
   // combinations of mines that can be around a given field.
   static const int kNumPossibleConfigurations;
 
+  // Initializes a new mine seeker field. Marks the field as uncovered and
+  // allows all configurations for the field.
   MineSeekerField();
 
   // Returns true if the configuration can be assigned to this field.
@@ -138,6 +140,8 @@ class MineSeeker {
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
 
+  // Checks that the given coordinates are valid. Uses CHECK_GE and CHECK_LT on
+  // them.
   void CheckCoordinatesAreValid(int x, int y) const;
 
   // Tests if the given configuration can be assigned to the field at position
