@@ -192,7 +192,6 @@ void MineSeeker::MarkAsMine(int x, int y) {
       || y >= mine_sweeper_.height()) {
     return;
   }
-  CHECK_EQ(MineSeekerField::HIDDEN, StateAtPosition(x, y));
   const MineSeekerField::State state = StateAtPosition(x, y);
   switch (state) {
     case MineSeekerField::HIDDEN:
@@ -309,6 +308,7 @@ void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {
   }
 
   if (changed_configurations) {
+    UpdateNeighborsAtPosition(x, y);
     // TODO(ondrasej): Check if we proved out some new mines or clear fields;
     // check consistency with neighbor fields.
   }
@@ -332,12 +332,12 @@ void MineSeeker::UpdateNeighborsAtPosition(int x, int y) {
   int empty_fields_in_neighborhood = 0xFF;
   int mines_in_neighborhood = 0xFF;
   const MineSeekerField& field = state_[x][y];
-  for (int configuration = 0;
+  for (int configuration = 1;
        configuration < MineSeekerField::kNumPossibleConfigurations;
        ++configuration) {
     if (field.IsPossibleConfiguration(configuration)) {
       mines_in_neighborhood &= configuration;
-      empty_fields_in_neighborhood &= (~configuration);
+      empty_fields_in_neighborhood &= (0xFF & ~configuration);
     }
   }
   // Uncover the fields that are certain not to contain a mine, mark fields with
@@ -345,10 +345,10 @@ void MineSeeker::UpdateNeighborsAtPosition(int x, int y) {
   for (int bit = 0; bit < 8; ++bit) {
     const int updated_field_x = x + kMineRelativePositionX[bit];
     const int updated_field_y = y + kMineRelativePositionY[bit];
-    if (IsBitSet(bit, empty_fields_in_neighborhood)) {
+    if (IsBitSet(empty_fields_in_neighborhood, bit)) {
       QueueFieldForUncover(updated_field_x, updated_field_y);
     }
-    if (IsBitSet(bit, mines_in_neighborhood)) {
+    if (IsBitSet(mines_in_neighborhood, bit)) {
       MarkAsMine(updated_field_x, updated_field_y);
     }
   }

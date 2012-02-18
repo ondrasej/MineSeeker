@@ -192,6 +192,7 @@ class MineSeeker {
   bool is_dead_;
 
   FRIEND_TEST(MineSeekerTest, TestUpdateConfigurationsAtPoint);
+  FRIEND_TEST(MineSeekerTest, TestUpdateNeighborsAtPoint);
   FRIEND_TEST(MineSeekerTest, TestUncoverFieldWithNoMine);
 };
 

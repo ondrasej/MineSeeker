@@ -245,4 +245,18 @@ TEST_F(MineSeekerTest, TestUpdateConfigurationsAtPoint) {
   }
 }
 
+TEST_F(MineSeekerTest, TestUpdateNeighborsAtPoint) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  const MineSeekerField& field = mine_seeker.FieldAtPosition(1, 0);
+  EXPECT_TRUE(mine_seeker.UncoverField(1, 0));
+  EXPECT_TRUE(mine_seeker.UncoverField(2, 0));
+  EXPECT_TRUE(mine_seeker.UncoverField(2, 1));
+  EXPECT_TRUE(mine_seeker.UncoverField(2, 2));
+  EXPECT_TRUE(mine_seeker.UncoverField(0, 1));
+  mine_seeker.UpdateConfigurationsAtPosition(1, 0);
+  EXPECT_EQ(1, field.NumberOfActiveConfigurations());
+  EXPECT_TRUE(field.IsBound());
+}
+
 }  // namespace mineseeker
