@@ -55,7 +55,7 @@ class MineSeekerField {
   }
   // Returns true if this field may contain a mine, i.e. it was not uncovered
   // yet, or it was already proven to contain a mine.
-  bool IsPossibleMine() const { return state_ != MINE; }
+  bool IsPossibleMine() const { return state_ != UNCOVERED; }
   // Returns true if this field is bound, i.e. a single configuration is
   // assigned to it.
   bool IsBound() const;
@@ -108,6 +108,16 @@ class MineSeeker {
   const MineSeekerField& FieldAtPosition(int x, int y) const;
   MineSeekerField::State StateAtPosition(int x, int y) const;
 
+  // Tests if the current state of the seeker allows for a mine at the position
+  // (x, y). The state allows the mine if it has already proved that the field
+  // contains the mine or the field was not uncovered yet.
+  // Returns false if the coordinates are outside the mine field.
+  bool IsPossibleMineAt(int x, int y) const;
+
+  // Returns true if the mine seeker finished either by finding all mines or
+  // stepping on a mine.
+  bool IsSolved() const;
+
   // Runs the solver. Returns true if the game was successfully solved;
   // otherwise, returns false.
   bool Solve();
@@ -128,6 +138,8 @@ class MineSeeker {
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
 
+  void CheckCoordinatesAreValid(int x, int y) const;
+
   // Tests if the given configuration can be assigned to the field at position
   // (x, y) with respect to its neighbor with relative coordinates (cx, cy).
   bool ConfigurationFitsWithSingleField(int configuration,
@@ -135,11 +147,6 @@ class MineSeeker {
                                         int x,
                                         int cx,
                                         int cy) const;
-  // Tests if the current state of the seeker allows for a mine at the position
-  // (x, y). The state allows the mine if it has already proved that the field
-  // contains the mine or the field was not uncovered yet.
-  // Returns false if the coordinates are outside the mine field.
-  bool IsPossibleMineAt(int x, int y) const;
   // Returns the number of mines around the given field. The field must be
   // uncovered for this method to return the number. For fields marked with
   // mines or hidden fields, this method returns -1.
@@ -151,9 +158,18 @@ class MineSeeker {
   // Resets the state of the mine seeker.
   void ResetState();
 
+  // Performs a single step of the solution 
+  void SolveStep();
+
   // Updates the available configurations at the given position based on the
   // fields around the position.
   void UpdateConfigurationsAtPosition(int x, int y);
+
+  // Uses the list of possible configurations at the given position to determine
+  // fields in neighborhood that are certain to contain a mine or that are
+  // certain to be clear. Updates the state of such fields and schedules their
+  // neighbors for update.
+  void UpdateNeighborsAtPosition(int x, int y);
 
   // The queues for fields that should be uncovered by the algorithm and fields
   // that should be updated (after something in their neighborhood changed). The

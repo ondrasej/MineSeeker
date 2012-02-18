@@ -162,6 +162,16 @@ TEST_F(MineSeekerTest, TestAllowedConfigurationsInCorners) {
                                      kNumAllowedConfigurations);
 }
 
+TEST_F(MineSeekerTest, TestMarkAsMine) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  EXPECT_EQ(MineSeekerField::HIDDEN, mine_seeker.StateAtPosition(0, 0));
+  EXPECT_TRUE(mine_seeker.IsPossibleMineAt(0, 0));
+  mine_seeker.MarkAsMine(0, 0);
+  EXPECT_EQ(MineSeekerField::MINE, mine_seeker.StateAtPosition(0, 0));
+  EXPECT_TRUE(mine_seeker.IsPossibleMineAt(0, 0));
+}
+
 TEST_F(MineSeekerTest, TestUncoverFieldWithMine) {
   MineSeeker mine_seeker(*mine_sweeper_);
   

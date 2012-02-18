@@ -66,6 +66,13 @@ MineSeeker::MineSeeker(const MineSweeper& mine_sweeper)
   ResetState();
 }
 
+void MineSeeker::CheckCoordinatesAreValid(int x, int y) const {
+  DCHECK_GE(x, 0);
+  DCHECK_LT(x, mine_sweeper_.width());
+  DCHECK_GE(y, 0);
+  DCHECK_LT(y, mine_sweeper_.height());
+}
+
 namespace {
 // Translates the relative position of the mine to the bit index in the ID of
 // the configuration.
@@ -118,10 +125,7 @@ bool MineSeeker::ConfigurationFitsWithSingleField(int configuration,
 bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
   DCHECK_GE(configuration, 0);
   DCHECK_LT(configuration, MineSeekerField::kNumPossibleConfigurations);
-  DCHECK_GE(x, 0);
-  DCHECK_LT(x, mine_sweeper_.width());
-  DCHECK_GE(y, 0);
-  DCHECK_LT(y, mine_sweeper_.height());
+  CheckCoordinatesAreValid(x, y);
 
   int num_mines_around = NumberOfMinesAroundField(x, y);
   if (num_mines_around >= 0) {
@@ -143,10 +147,7 @@ bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
 }
 
 const MineSeekerField& MineSeeker::FieldAtPosition(int x, int y) const {
-  CHECK_GE(x, 0);
-  CHECK_LT(x, mine_sweeper_.width());
-  CHECK_GE(y, 0);
-  CHECK_LT(y, mine_sweeper_.height());
+  CheckCoordinatesAreValid(x, y);
   return state_[x][y];
 }
 
@@ -168,6 +169,40 @@ bool MineSeeker::IsPossibleMineAt(int x, int y) const {
     return false;
   }
   return state_[x][y].IsPossibleMine();
+}
+
+bool MineSeeker::IsSolved() const {
+  if (is_dead_) {
+    return true;
+  }
+  for (int x = 0; x < mine_sweeper_.width(); ++x) {
+    for (int y = 0; y < mine_sweeper_.height(); ++y) {
+      if (MineSeekerField::HIDDEN == StateAtPosition(x, y)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+void MineSeeker::MarkAsMine(int x, int y) {
+  if (x < 0
+      || y < 0
+      || x >= mine_sweeper_.width()
+      || y >= mine_sweeper_.height()) {
+    return;
+  }
+  CHECK_EQ(MineSeekerField::HIDDEN, StateAtPosition(x, y));
+  const MineSeekerField::State state = StateAtPosition(x, y);
+  switch (state) {
+    case MineSeekerField::HIDDEN:
+      state_[x][y].set_state(MineSeekerField::MINE);
+      // TODO(ondrasej): Queue the neighbors for update
+    case MineSeekerField::MINE:
+      break;
+    default:
+      LOG(FATAL) << "Invalid field state: " << state;
+  }
 }
 
 int MineSeeker::NumberOfMinesAroundField(int x, int y) const {
@@ -211,14 +246,23 @@ void MineSeeker::ResetState() {
   }
 }
 
-void MineSeeker::Solve() {
+bool MineSeeker::Solve() {
+  while (!IsSolved()) {
+    SolveStep();
+  }
+  return !is_dead();
+}
+
+void MineSeeker::SolveStep() {
+  if (!uncover_queue_.empty()) {
+
+  } else if (!update_queue_.empty()) {
+    
+  }
 }
 
 bool MineSeeker::UncoverField(int x, int y) {
-  CHECK_GE(x, 0);
-  CHECK_LT(x, mine_sweeper_.width());
-  CHECK_GE(y, 0);
-  CHECK_LT(y, mine_sweeper_.height());
+  CheckCoordinatesAreValid(x, y);
 
   MineSeekerField* const field = &state_[x][y];
   CHECK_EQ(MineSeekerField::HIDDEN, field->state());
@@ -249,10 +293,7 @@ bool MineSeeker::UncoverField(int x, int y) {
 }
 
 void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {
-  CHECK_GE(x, 0);
-  CHECK_LT(x, mine_sweeper_.width());
-  CHECK_GE(y, 0);
-  CHECK_LT(y, mine_sweeper_.height());
+  CheckCoordinatesAreValid(x, y);
 
   bool changed_configurations = false;
   MineSeekerField* const field = &state_[x][y];
@@ -271,6 +312,47 @@ void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {
     // TODO(ondrasej): Check if we proved out some new mines or clear fields;
     // check consistency with neighbor fields.
   }
+}
+
+namespace {
+const int kMineRelativePositionX[] = { -1, 0, 1, -1, 1, -1, 0, 1 };
+const int kMineRelativePositionY[] = { -1, -1, -1, 0, 0, 1, 1, 1 };
+}
+
+void MineSeeker::UpdateNeighborsAtPosition(int x, int y) {
+  CheckCoordinatesAreValid(x, y);
+
+  // Find fields in the neighborhood that are certain not to contain a mine.
+  // Uses the encoding of the mines in the ID of the configuration to accumulate
+  // the possible positions of mines in empty_fields_in_neighborhood; after the
+  // loop is finished, empty_fields_in_neighborhood contains 1's at bits
+  // corresponding to places proved not to contain mines. At the same time, it
+  // accumulates the fields that are certain to contain mines in
+  // mines_in_neighborhood the same way.
+  int empty_fields_in_neighborhood = 0xFF;
+  int mines_in_neighborhood = 0xFF;
+  const MineSeekerField& field = state_[x][y];
+  for (int configuration = 0;
+       configuration < MineSeekerField::kNumPossibleConfigurations;
+       ++configuration) {
+    if (field.IsPossibleConfiguration(configuration)) {
+      mines_in_neighborhood &= configuration;
+      empty_fields_in_neighborhood &= (~configuration);
+    }
+  }
+  // Uncover the fields that are certain not to contain a mine, mark fields with
+  // mines as such.
+  for (int bit = 0; bit < 8; ++bit) {
+    const int updated_field_x = x + kMineRelativePositionX[bit];
+    const int updated_field_y = y + kMineRelativePositionY[bit];
+    if (IsBitSet(bit, empty_fields_in_neighborhood)) {
+      QueueFieldForUncover(updated_field_x, updated_field_y);
+    }
+    if (IsBitSet(bit, mines_in_neighborhood)) {
+      MarkAsMine(updated_field_x, updated_field_y);
+    }
+  }
+  
 }
 
 }  // namespace mineseeker
