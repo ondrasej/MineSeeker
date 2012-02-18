@@ -1,0 +1,3 @@
+= MineSeeker
+
+A minesweeper puzzle solver based on constraint programming principles.
