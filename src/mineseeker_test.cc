@@ -24,11 +24,14 @@
 
 namespace mineseeker {
 
+// Base class for tests of the MineSeeker clas. Sets up a 30x20 minefield with
+// a few mines to test the solver.
 class MineSeekerTest : public testing::Test {
  protected:
   static const int kWidth = 30;
   static const int kHeight = 20;
 
+  // The positions of the mines in the test minefield.
   static const int kMineX[];
   static const int kMineY[];
   static const int kNumMines;
@@ -51,12 +54,17 @@ const int MineSeekerTest::kMineX[] = { 1, 0, 10, 3, 20, 29, 15, 15, 15 };
 const int MineSeekerTest::kMineY[] = { 1, 0, 15, 8, 19, 0, 0, 1, 2 };
 const int MineSeekerTest::kNumMines = ARRAYSIZE(MineSeekerTest::kMineX);
 
+// Tests creating a new minefield. Examines that the state of the seeker allows
+// for all possible configurations of the mines.
 TEST_F(MineSeekerTest, TestCreate) {
   MineSeeker mine_seeker(*mine_sweeper_);
   
   EXPECT_EQ(mine_sweeper_.get(), &mine_seeker.mine_sweeper());
   EXPECT_FALSE(mine_seeker.is_dead());
 
+  // Check that the configuration with no mines at all can occur at all
+  // positions on the minefield and that the state allows for all possible
+  // configurations.
   for (int x = 0; x < kWidth; ++x) {
     for (int y = 0; y < kHeight; ++y) {
       const MineSeekerField& field = mine_seeker.FieldAtPosition(x, y);
@@ -73,6 +81,8 @@ TEST_F(MineSeekerTest, TestCreate) {
     }
   }
 
+  // There are eight possible configurations for the fields in the corner. Check
+  // the number of possible configurations for the corners of the minefield.
   const int kCornerFieldX[] = { 0, 0, kWidth - 1, kWidth - 1 };
   const int kCornerFieldY[] = { 0, kHeight - 1, 0, kHeight - 1 };
   const int kNumCornerFields = ARRAYSIZE(kCornerFieldX);
@@ -86,6 +96,8 @@ TEST_F(MineSeekerTest, TestCreate) {
               field.NumberOfActiveConfigurations());
   }
 
+  // Checks the number of possible configurations on the border of the minefield
+  // (but not in the corners).
   const int kExpectedAllowedConfigurationsOnEdge = 32;
   for (int x = 1; x < kWidth - 1; ++x) {
     const MineSeekerField& top_field = mine_seeker.FieldAtPosition(x, 0);
@@ -107,7 +119,9 @@ TEST_F(MineSeekerTest, TestCreate) {
   }
 }
 
-TEST_F(MineSeekerTest, TestConfigurationFitsAt) {
+// Tests that in a minefield with all fields hidden, the configuration with no
+// mines is allowed for all fields.
+TEST_F(MineSeekerTest, TestConfigurationWithNoMinesFits) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
   for (int x = 1; x < kWidth - 1; ++x) {
