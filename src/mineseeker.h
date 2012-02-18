@@ -120,6 +120,11 @@ class MineSeeker {
   // stepping on a mine.
   bool IsSolved() const;
 
+  // Returns the number of mines around the given field. The field must be
+  // uncovered for this method to return the number. For fields marked with
+  // mines or hidden fields, this method returns -1.
+  int NumberOfMinesAroundField(int x, int y) const;
+
   // Runs the solver. Returns true if the game was successfully solved;
   // otherwise, returns false.
   bool Solve();
@@ -151,10 +156,6 @@ class MineSeeker {
                                         int x,
                                         int cx,
                                         int cy) const;
-  // Returns the number of mines around the given field. The field must be
-  // uncovered for this method to return the number. For fields marked with
-  // mines or hidden fields, this method returns -1.
-  int NumberOfMinesAroundField(int x, int y) const;
 
   void QueueFieldForUncover(int x, int y);
   void QueueFieldForUpdate(int x, int y);
@@ -190,6 +191,7 @@ class MineSeeker {
   // new field.
   bool is_dead_;
 
+  FRIEND_TEST(MineSeekerTest, TestUpdateConfigurationsAtPoint);
   FRIEND_TEST(MineSeekerTest, TestUncoverFieldWithNoMine);
 };
 

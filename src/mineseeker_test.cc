@@ -202,4 +202,47 @@ TEST_F(MineSeekerTest, TestUncoverFieldWithNoMine) {
   EXPECT_EQ(8, mine_seeker.uncover_queue_.size());
 }
 
+TEST_F(MineSeekerTest, TestUpdateConfigurationsAtPoint) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  const int kPossibleConfigurationsWithNoMarkedMine[] =
+      { 24, 40, 72, 136, 48, 80, 144, 96, 160, 192 };
+  const int kNumPossibleConfigurationsWithNoMarkedMine =
+      ARRAYSIZE(kPossibleConfigurationsWithNoMarkedMine);
+  const std::set<int> possible_configurations_with_no_marked_mine(
+      kPossibleConfigurationsWithNoMarkedMine,
+      kPossibleConfigurationsWithNoMarkedMine +
+      kNumPossibleConfigurationsWithNoMarkedMine);
+  EXPECT_TRUE(mine_seeker.UncoverField(1, 0));
+  EXPECT_EQ(2, mine_seeker.NumberOfMinesAroundField(1, 0));
+  const MineSeekerField& field = mine_seeker.FieldAtPosition(1, 0);
+  for (int configuration = 0;
+       configuration < MineSeekerField::kNumPossibleConfigurations;
+       ++configuration) {
+    bool expected_is_possible_configuration =
+        possible_configurations_with_no_marked_mine.count(configuration) > 0;
+    EXPECT_EQ(expected_is_possible_configuration,
+              field.IsPossibleConfiguration(configuration));
+  }
+
+  mine_seeker.MarkAsMine(0, 0);
+  mine_seeker.UpdateConfigurationsAtPosition(1, 0);
+  const int kPossibleConfigurationsWithMarkedMine[] =
+      { 24, 40, 72, 136 };
+  const int kNumPossibleConfigurationsWithMarkedMine =
+      ARRAYSIZE(kPossibleConfigurationsWithMarkedMine);
+  const std::set<int> possible_configurations_with_marked_mine(
+      kPossibleConfigurationsWithMarkedMine,
+      kPossibleConfigurationsWithMarkedMine +
+      kNumPossibleConfigurationsWithMarkedMine);
+  for (int configuration = 0;
+       configuration < MineSeekerField::kNumPossibleConfigurations;
+       ++configuration) {
+    bool expected_is_possible_configuration =
+        possible_configurations_with_marked_mine.count(configuration) > 0;
+    EXPECT_EQ(expected_is_possible_configuration,
+              field.IsPossibleConfiguration(configuration));
+  }
+}
+
 }  // namespace mineseeker
