@@ -47,8 +47,8 @@ class MineSeekerTest : public testing::Test {
   scoped_ptr<MineSweeper> mine_sweeper_;
 };
 
-const int MineSeekerTest::kMineX[] = { 1, 0, 10, 3, 20, 29 };
-const int MineSeekerTest::kMineY[] = { 1, 0, 15, 8, 19, 0 };
+const int MineSeekerTest::kMineX[] = { 1, 0, 10, 3, 20, 29, 15, 15, 15 };
+const int MineSeekerTest::kMineY[] = { 1, 0, 15, 8, 19, 0, 0, 1, 2 };
 const int MineSeekerTest::kNumMines = ARRAYSIZE(MineSeekerTest::kMineX);
 
 TEST_F(MineSeekerTest, TestCreate) {
