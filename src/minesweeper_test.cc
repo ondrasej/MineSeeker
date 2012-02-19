@@ -93,6 +93,7 @@ TEST(MineSweeperTest, TestLoadFromString) {
 
   scoped_ptr<MineSweeper> mine_sweeper(
       MineSweeper::LoadFromString(kTestInput));
+  EXPECT_NE((MineSweeper*)NULL, mine_sweeper.get());
   EXPECT_EQ(kExpectedWidth, mine_sweeper->width());
   EXPECT_EQ(kExpectedHeight, mine_sweeper->height());
   EXPECT_EQ(kNumMines, mine_sweeper->NumberOfMines());

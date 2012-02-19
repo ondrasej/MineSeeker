@@ -118,6 +118,7 @@ MineSweeper* MineSweeper::LoadFromString(const string& input) {
     mine_sweeper->SetMine(x, y, true);
   }
 
+  mine_sweeper->CloseMineField();
   return mine_sweeper.release();
 }
 
