@@ -49,7 +49,15 @@ class MineSweeper {
   // Loads the mine field from a file. Returns NULL if loading of the mine field
   // failed. Upon success, returns the minefield; the caller is responsible for
   // deleting the returned object.
+  //
+  // The mines are expected in the following format:
+  // {width} {height}
+  // {num_mines}
+  // {x1} {y1}
+  // {x2} {y2}
+  // ...
   static MineSweeper* LoadFromFile(const string& file_name);
+  static MineSweeper* LoadFromString(const string& input);
 
   // Closes the mine field. Updates the numbers of neighboring mines for each
   // field.

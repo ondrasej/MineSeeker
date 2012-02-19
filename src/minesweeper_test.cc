@@ -19,6 +19,7 @@
 #include "glog/logging.h"
 #include "gtest/gtest.h"
 #include "minesweeper.h"
+#include "scoped_ptr.h"
 
 namespace mineseeker {
 
@@ -74,6 +75,31 @@ TEST(MineSweeperTest, TestCreate) {
     for (int y = 0; y < kHeight; ++y) {
       EXPECT_FALSE(mine_sweeper.IsMine(x, y));
     }
+  }
+}
+
+TEST(MineSweeperTest, TestLoadFromString) {
+  static const char kTestInput[] =
+      "10 12\n"
+      "8\n"
+      "0 0 2 3 5 4 6 0\n"
+      "9 8 0 3 9 9 2 9\n";
+  const int kExpectedWidth = 10;
+  const int kExpectedHeight = 12;
+  const int kExpectedMineX[] = { 0, 2, 5, 6, 9, 0, 9, 2 };
+  const int kExpectedMineY[] = { 0, 3, 4, 0, 8, 3, 9, 9 };
+  const int kNumMines = ARRAYSIZE(kExpectedMineX);
+  CHECK_EQ(kNumMines, ARRAYSIZE(kExpectedMineY));
+
+  scoped_ptr<MineSweeper> mine_sweeper(
+      MineSweeper::LoadFromString(kTestInput));
+  EXPECT_EQ(kExpectedWidth, mine_sweeper->width());
+  EXPECT_EQ(kExpectedHeight, mine_sweeper->height());
+  EXPECT_EQ(kNumMines, mine_sweeper->NumberOfMines());
+  for (int i = 0; i < kNumMines; ++i) {
+    const int x = kExpectedMineX[i];
+    const int y = kExpectedMineY[i];
+    EXPECT_TRUE(mine_sweeper->IsMine(x, y));
   }
 }
 

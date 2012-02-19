@@ -22,6 +22,7 @@
 
 #include "glog/logging.h"
 #include "gtest/gtest.h"
+#include "scoped_ptr.h"
 
 namespace mineseeker {
 
@@ -77,6 +78,47 @@ void MineSweeper::IncreaseMineCount(int x, int y) {
 
 bool MineSweeper::IsMine(int x, int y) const {
   return kMineInField == NumberOfMinesAroundField(x, y);
+}
+
+MineSweeper* MineSweeper::LoadFromString(const string& input) {
+  std::istringstream in(input);
+  int width = 0;
+  int height = 0;
+  in >> width >> height;
+  if (width <= 0) {
+    LOG(ERROR) << "Invalid width: " << width;
+    return NULL;
+  }
+  if (height <= 0) {
+    LOG(ERROR) << "Invalid height: " << height;
+    return NULL;
+  }
+
+  scoped_ptr<MineSweeper> mine_sweeper(new MineSweeper(width, height));
+
+  int num_mines = 0;
+  in >> num_mines;
+  if (num_mines <= 0) {
+    LOG(ERROR) << "Invalid number of mines: " << num_mines;
+    return NULL;
+  }
+
+  for (int i = 0; i < num_mines; ++i) {
+    int x = -1;
+    int y = -1;
+    in >> x >> y;
+    if (x < 0 || x >= width) {
+      LOG(ERROR) << "Invalid X posistion of a mine: " << x;
+      return NULL;
+    }
+    if (y < 0 || y >= height) {
+      LOG(ERROR) << "Invalid Y position of a mine: " << y;
+      return NULL;
+    }
+    mine_sweeper->SetMine(x, y, true);
+  }
+
+  return mine_sweeper.release();
 }
 
 int MineSweeper::NumberOfMines() const {
