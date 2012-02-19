@@ -61,7 +61,8 @@ void MineSeekerField::SetConfiguration(int configuration) {
 
 MineSeeker::MineSeeker(const MineSweeper& mine_sweeper)
     : mine_sweeper_(mine_sweeper),
-      is_dead_(false) {
+      is_dead_(false),
+      safe_field_requests_(-1) {
   CHECK(mine_sweeper_.is_closed());
   ResetState();
 }
@@ -147,29 +148,63 @@ bool MineSeeker::ConfigurationFitsAt(int configuration, int x, int y) const {
 }
 
 void MineSeeker::DebugString(string* out) const {
-  *out = "\n";
+  std::stringstream out_stream;
+  out_stream << "Is dead: " << is_dead_ << std::endl;
+  out_stream << "Safe spots: " << safe_field_requests_ << std::endl;
   for (int y = 0; y < mine_sweeper_.height(); ++y) {
     for (int x = 0; x < mine_sweeper_.width(); ++x) {
       switch (StateAtPosition(x, y)) {
         case MineSeekerField::HIDDEN:
-          out->push_back('.');
+          out_stream << '.';
           break;
         case MineSeekerField::MINE:
-          out->push_back('*');
+          out_stream << '*';
           break;
         case MineSeekerField::UNCOVERED:
           const int num_mines = NumberOfMinesAroundField(x, y);
-          out->push_back(num_mines == 0 ? ' ' : '0' + num_mines);
+          if (num_mines == 0) {
+            out_stream << ' ';
+          } else {
+           out_stream << num_mines;
+          }
           break;
       }
     }
-    out->push_back('\n');
+    out_stream << std::endl;
   }
+  *out = out_stream.str();
 }
 
 const MineSeekerField& MineSeeker::FieldAtPosition(int x, int y) const {
   CheckCoordinatesAreValid(x, y);
   return state_[x][y];
+}
+
+bool MineSeeker::GetSafeFieldCoordinates(FieldCoordinate* coordinates) {
+  CHECK_NOTNULL(coordinates);
+  ++safe_field_requests_;
+  for (int x = 0; x < mine_sweeper_.width(); ++x) {
+    for (int y = 0; y < mine_sweeper_.height(); ++y) {
+      if (MineSeekerField::HIDDEN == StateAtPosition(x, y)
+          && !mine_sweeper_.IsMine(x, y)
+          && 0 == mine_sweeper_.NumberOfMinesAroundField(x, y)) {
+        coordinates->x = x;
+        coordinates->y = y;
+        return true;
+      }
+    }
+  }
+  for (int x = 0; x < mine_sweeper_.width(); ++x) {
+    for (int y = 0; y < mine_sweeper_.height(); ++y) {
+      if (MineSeekerField::HIDDEN == StateAtPosition(x, y)
+          && !mine_sweeper_.IsMine(x, y)) {
+        coordinates->x = x;
+        coordinates->y = y;
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 MineSeekerField::State MineSeeker::StateAtPosition(int x, int y) const {
@@ -278,6 +313,14 @@ void MineSeeker::ResetState() {
 }
 
 bool MineSeeker::Solve() {
+  FieldCoordinate start_coordinates(-1, -1);
+  if (!GetSafeFieldCoordinates(&start_coordinates)) {
+    LOG(ERROR) << "There is no safe start field";
+    return false;
+  }
+
+  UncoverField(start_coordinates.x, start_coordinates.y);
+
   while (!IsSolved()) {
     if (!SolveStep()) {
       break;
@@ -301,6 +344,13 @@ bool MineSeeker::SolveStep() {
     //LOG(INFO) << "Updating: " << coordinates.x << " " << coordinates.y;
     UpdateConfigurationsAtPosition(coordinates.x, coordinates.y);
     update_queue_.pop();
+    return true;
+  } else {
+    FieldCoordinate safe_spot(-1, -1);
+    if (!GetSafeFieldCoordinates(&safe_spot)) {
+      return false;
+    }
+    UncoverField(safe_spot.x, safe_spot.y);
     return true;
   }
   return false;
@@ -404,6 +454,13 @@ void MineSeeker::UpdateNeighborsAtPosition(int x, int y) {
     }
   }
   
+}
+
+void MineSeeker::UpdatePairConsistency(int x1, int y1, int x2, int y2) {
+  CHECK_GE(x1 - x2, -2);
+  CHECK_LE(x1 - x2, 2);
+  CHECK_GE(y1 - y2, -2);
+  CHECK_LE(y1 - y2, 2);
 }
 
 }  // namespace mineseeker

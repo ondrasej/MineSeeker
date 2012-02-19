@@ -80,9 +80,15 @@ class MineSeekerField {
   // field and false otherwise.
   const vector<bool>& configurations() const { return configurations_; }
 
+  int temporary_status() const { return temporary_status_; }
+  bool push_temporary_mine();
+  bool push_temporary_clear_area();
+  
  private:
   // Resets the configurations - enables all configurations.
   void ResetConfigurations();
+
+  int temporary_status_;
 
   State state_;
   vector<bool> configurations_;
@@ -101,7 +107,7 @@ struct FieldCoordinate {
 // prove the fields contain mines or not.
 class MineSeeker {
  public:
-  MineSeeker(const MineSweeper& mine_sweeper);
+  explicit MineSeeker(const MineSweeper& mine_sweeper);
 
   // Tests if configuration can be placed at the position (x, y) with respect to
   // the knowledge about the other fields.
@@ -141,11 +147,14 @@ class MineSeeker {
   bool is_dead() const { return is_dead_; }
   // Returns the MineSweeper instance on which the game is played.
   const MineSweeper& mine_sweeper() const { return mine_sweeper_; }
+  // Returns the number of times the solver requested a safe field.
+  int safe_field_requests() const { return safe_field_requests_; }
 
   void DebugString(string* out) const;
 
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
+  typedef vector<vector<int> > IntMatrix;
 
   // Checks that the given coordinates are valid. Uses CHECK_GE and CHECK_LT on
   // them.
@@ -158,6 +167,10 @@ class MineSeeker {
                                         int x,
                                         int cx,
                                         int cy) const;
+
+  // Selects a field with no mine that was not uncovered yet (for cases where
+  // the solver gets stuck).
+  bool GetSafeFieldCoordinates(FieldCoordinate* coordinates);
 
   void QueueFieldForUncover(int x, int y);
   void QueueNeighborsForUpdate(int x, int y);
@@ -179,6 +192,9 @@ class MineSeeker {
   // neighbors for update.
   void UpdateNeighborsAtPosition(int x, int y);
 
+  // Removes non-compatible configurations for a pair of neighboring fields.
+  void UpdatePairConsistency(int x1, int y1, int x2, int y2);
+
   // The queues for fields that should be uncovered by the algorithm and fields
   // that should be updated (after something in their neighborhood changed). The
   // algorithm processes them asynchronously to avoid too deep recursion and to
@@ -193,6 +209,9 @@ class MineSeeker {
   // Keeps trace of whether the mineseeker stepped on a mine when uncovering a
   // new field.
   bool is_dead_;
+  // The number of calls to GetSafeFieldCoordinates used while solving the
+  // puzzle.
+  int safe_field_requests_;
 
   FRIEND_TEST(MineSeekerTest, TestUpdateConfigurationsAtPoint);
   FRIEND_TEST(MineSeekerTest, TestUpdateNeighborsAtPoint);
