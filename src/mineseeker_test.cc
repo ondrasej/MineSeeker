@@ -244,6 +244,8 @@ TEST_F(MineSeekerTest, TestUncoverFieldWithNoMine) {
   EXPECT_EQ(8, mine_seeker.uncover_queue_.size());
 }
 
+// Tests updating the available configurations at the given point after marking
+// one of its neighbors as a mine.
 TEST_F(MineSeekerTest, TestUpdateConfigurationsAtPoint) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
@@ -287,6 +289,8 @@ TEST_F(MineSeekerTest, TestUpdateConfigurationsAtPoint) {
   }
 }
 
+// Tests updating the neighbors based on available configurations at a given
+// field.
 TEST_F(MineSeekerTest, TestUpdateNeighborsAtPoint) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
