@@ -136,6 +136,8 @@ TEST_F(MineSeekerTest, TestConfigurationWithNoMinesFits) {
 }
 
 namespace {
+// Checks that the allowed configurations for the given field are exactly those
+// provided in the list.
 void CheckAllowedConfigurationsForField(const MineSeekerField& field,
                                         const int* allowed_configurations,
                                         int num_allowed_configurations) {
@@ -155,6 +157,10 @@ void CheckAllowedConfigurationsForField(const MineSeekerField& field,
 }
 }  // namespace
 
+// Checks the allowed configurations for the left-top and bottom right corners
+// of the minefield. All fields are hidden, but only a limited subset of
+// configurations are allowed in the corners as there can be no mines outside
+// the minefield.
 TEST_F(MineSeekerTest, TestAllowedConfigurationsInCorners) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
@@ -176,6 +182,7 @@ TEST_F(MineSeekerTest, TestAllowedConfigurationsInCorners) {
                                      kNumAllowedConfigurations);
 }
 
+// Tests marking a field with a mine.
 TEST_F(MineSeekerTest, TestMarkAsMine) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
@@ -186,6 +193,8 @@ TEST_F(MineSeekerTest, TestMarkAsMine) {
   EXPECT_TRUE(mine_seeker.IsPossibleMineAt(0, 0));
 }
 
+// Tests running the solver on a simple problem that can be solved by
+// single field consistency.
 TEST_F(MineSeekerTest, TestSolve) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
@@ -205,6 +214,9 @@ TEST_F(MineSeekerTest, TestUncoverFieldWithMine) {
   EXPECT_TRUE(mine_seeker.is_dead());
 }
 
+// Tests uncovering a fields with no mine (one with no mines in the neighborhood
+// and two with a mine). Checks that the neighbor fields will get queued for
+// updating and uncovering.
 TEST_F(MineSeekerTest, TestUncoverFieldWithNoMine) {
   MineSeeker mine_seeker(*mine_sweeper_);
 
@@ -216,13 +228,19 @@ TEST_F(MineSeekerTest, TestUncoverFieldWithNoMine) {
   EXPECT_EQ(2, mine_seeker.NumberOfMinesAroundField(1, 0));
   EXPECT_EQ(0, mine_seeker.update_queue_.size());
 
+  EXPECT_TRUE(mine_seeker.UncoverField(2, 0));
+  EXPECT_FALSE(mine_seeker.is_dead());
+  EXPECT_EQ(1, mine_seeker.update_queue_.size());
+  EXPECT_EQ(1, mine_seeker.NumberOfMinesAroundField(2, 0));
+  EXPECT_EQ(0, mine_seeker.uncover_queue_.size());
+
   EXPECT_EQ(MineSeekerField::HIDDEN, mine_seeker.StateAtPosition(10, 10));
   EXPECT_EQ(-1, mine_seeker.NumberOfMinesAroundField(10, 10));
   EXPECT_FALSE(mine_seeker.is_dead());
   EXPECT_TRUE(mine_seeker.UncoverField(10, 10));
   EXPECT_FALSE(mine_seeker.is_dead());
   EXPECT_EQ(0, mine_seeker.NumberOfMinesAroundField(10, 10));
-  EXPECT_EQ(0, mine_seeker.update_queue_.size());
+  EXPECT_EQ(1, mine_seeker.update_queue_.size());
   EXPECT_EQ(8, mine_seeker.uncover_queue_.size());
 }
 

@@ -334,8 +334,8 @@ bool MineSeeker::UncoverField(int x, int y) {
     }
   } else {
     UpdateConfigurationsAtPosition(x, y);
-    QueueNeighborsForUpdate(x, y);
   }
+  QueueNeighborsForUpdate(x, y);
 
   return true;
 }
