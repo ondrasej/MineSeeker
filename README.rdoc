@@ -1,3 +1,53 @@
 = MineSeeker
 
 A minesweeper puzzle solver based on constraint programming principles.
+
+== Running MineSeeker
+
+MineSeeker is a console applications, reads input from stdin and produces output
+to stdout and stderr. Example use:
+
+ > ./build/generate_mines | ./build/mineseeker_run
+
+== Input format
+
+MineSeeker uses a simple text-based input format for the puzzle specification:
+
+ {width} {height}
+ {number of mines}
+ {mine 1 x} {mine 1 y}
+ ...
+ {mine N x} {mine N y}
+
+Where all coordinates are zero-based.
+
+== Building MineSeeker
+
+To build MineSeeker on a Unix system, all you need is the standard tools and a
+C++ compiler and SCons (unless you want to write your own build script).
+
+MineSeeker uses Google libraries for logging, command line flags and unit tests.
+These libraries are already included in the repository; to setup the environment
+for building, two build scripts for these libraries are provided. Run them
+before running Scons for the first time:
+
+ > cd tools
+ > ./build-gflags.h
+ > ./build-glog.h
+
+The scripts will install the libraries to the project directory (and do not
+touch anything outside the project dir). After running the scripts, you can
+build MineSeeker with
+
+ > scons -Q
+
+To run all tests after building, add the '--run-all-tests' command-line
+argument.
+
+ > scons -Q --run-all-tests
+
+== To be done later
+
+- Interactive mode (the program says which fields to uncover and the users
+  provides the numbers of mines).
+- Windows version interacting with Windows Minesweeper
