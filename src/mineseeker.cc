@@ -264,6 +264,10 @@ void MineSeeker::MarkAsMine(int x, int y) {
     default:
       LOG(FATAL) << "Invalid field state: " << state;
   }
+
+  string debug_output;
+  DebugString(&debug_output);
+  LOG(INFO) << debug_output;
 }
 
 int MineSeeker::NumberOfMinesAroundField(int x, int y) const {
@@ -276,7 +280,6 @@ int MineSeeker::NumberOfMinesAroundField(int x, int y) const {
 
 void MineSeeker::QueueFieldForUncover(int x, int y) {
   if (StateAtPosition(x, y) == MineSeekerField::HIDDEN) {
-    //LOG(INFO) << "Queing " << x << " " << y << " for uncovering";
     uncover_queue_.push(FieldCoordinate(x, y));
   }
 }
@@ -361,14 +364,12 @@ bool MineSeeker::SolveStep() {
     const FieldCoordinate& coordinates = uncover_queue_.front();
     if (MineSeekerField::HIDDEN == StateAtPosition(coordinates.x,
                                                    coordinates.y)) {
-      //LOG(INFO) << "Uncovering: " << coordinates.x << " " << coordinates.y;
       UncoverField(coordinates.x, coordinates.y);
     }
     uncover_queue_.pop();
     return true;
   } else if (!update_queue_.empty()) {
     const FieldCoordinate& coordinates = update_queue_.front();
-    //LOG(INFO) << "Updating: " << coordinates.x << " " << coordinates.y;
     UpdateConfigurationsAtPosition(coordinates.x, coordinates.y);
     update_queue_.pop();
     return true;
@@ -421,6 +422,10 @@ bool MineSeeker::UncoverField(int x, int y) {
     UpdateConfigurationsAtPosition(x, y);
   }
   QueueNeighborsForUpdate(x, y);
+
+  string state;
+  DebugString(&state);
+  LOG(INFO) << state;
 
   return true;
 }
@@ -554,12 +559,6 @@ void MineSeeker::UpdatePairConsistency(int x1, int y1, int x2, int y2) {
       || MineSeekerField::UNCOVERED != StateAtPosition(x2, y2)) {
     return;
   }
-
-  string state;
-  DebugString(&state);
-  LOG(INFO) << state;
-
-  LOG(INFO) << "Updating pair: " << x1 << " " << y1 << " - " << x2 << " " << y2;
 
   const vector<bool>& configurations1 = state_[x1][y1].configurations();
   const vector<bool>& configurations2 = state_[x2][y2].configurations();
