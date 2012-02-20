@@ -418,9 +418,9 @@ TEST_F(MineSeekerTest, TestUpdatePairConsistency) {
     EXPECT_EQ(kExpectedNumConfigurationsAfterUpdate,
               mine_seeker.FieldAtPosition(1, 2).NumberOfActiveConfigurations());
 
-    EXPECT_EQ(0, mine_seeker.uncover_queue_.size());
-    mine_seeker.UpdateNeighborsAtPosition(1, 2);
     EXPECT_EQ(3, mine_seeker.uncover_queue_.size());
+    mine_seeker.UpdateNeighborsAtPosition(1, 2);
+    EXPECT_EQ(6, mine_seeker.uncover_queue_.size());
   }
 
   mine_seeker.UncoverField(10, 19);
