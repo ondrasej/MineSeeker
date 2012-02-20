@@ -72,6 +72,10 @@ env.UnitTest('mineseeker_test',
              LIBS=['gtest', 'gtest_main', 'glog', 'minesweeper'],
              LIBPATH=['.', '../lib'])
 
+env.Program('generate_mines',
+            ['generate_mines.cc'],
+            LIBS=['glog', 'gflags'],
+            LIBPATH=['.', '../lib'])
 env.Program('mineseeker_run',
             ['mineseeker_run.cc'],
             LIBS=['gtest', 'gtest_main', 'glog', 'minesweeper'],
