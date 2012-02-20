@@ -24,6 +24,59 @@
 
 namespace mineseeker {
 
+
+TEST(MineSeekerFieldTest, TestPushTemporaryMine) {
+  MineSeekerField field;
+
+  const int kNumIterations = 10;
+  for (int i = 0; i < kNumIterations; ++i) {
+    EXPECT_EQ(i, field.temporary_status());
+    EXPECT_TRUE(field.PushTemporaryMine());
+    EXPECT_EQ(i + 1, field.temporary_status());
+  }
+
+  for (int i = kNumIterations; i > 0; --i) {
+    EXPECT_EQ(i, field.temporary_status());
+    field.PopTemporaryMine();
+    EXPECT_EQ(i - 1, field.temporary_status());
+  }
+}
+
+TEST(MineSeekerFieldTest, TestPushTemporaryClearArea) {
+  MineSeekerField field;
+
+  const int kNumIterations = 10;
+  for (int i = 0; i < kNumIterations; ++i) {
+    EXPECT_EQ(-i, field.temporary_status());
+    EXPECT_TRUE(field.PushTemporaryClearArea());
+    EXPECT_EQ(-i - 1, field.temporary_status());
+  }
+
+  for (int i = kNumIterations; i > 0; --i) {
+    EXPECT_EQ(-i, field.temporary_status());
+    field.PopTemporaryClearArea();
+    EXPECT_EQ(-i + 1, field.temporary_status());
+  }
+}
+
+TEST(MineSeekerFieldTest, TestPushTemporaryMineOnTemporaryClearArea) {
+  MineSeekerField field;
+
+  EXPECT_TRUE(field.PushTemporaryClearArea());
+  EXPECT_EQ(-1, field.temporary_status());
+  EXPECT_FALSE(field.PushTemporaryMine());
+  EXPECT_EQ(0, field.temporary_status());
+}
+
+TEST(MineSeekerFieldTest, TestPushTemporaryClearAreaOnTemporaryMine) {
+  MineSeekerField field;
+
+  EXPECT_TRUE(field.PushTemporaryMine());
+  EXPECT_EQ(1, field.temporary_status());
+  EXPECT_FALSE(field.PushTemporaryClearArea());
+  EXPECT_EQ(0, field.temporary_status());
+}
+
 // Base class for tests of the MineSeeker clas. Sets up a 30x20 minefield with
 // a few mines to test the solver.
 class MineSeekerTest : public testing::Test {
@@ -50,8 +103,8 @@ class MineSeekerTest : public testing::Test {
   scoped_ptr<MineSweeper> mine_sweeper_;
 };
 
-const int MineSeekerTest::kMineX[] = { 1, 0, 10, 3, 20, 29, 15, 15, 15 };
-const int MineSeekerTest::kMineY[] = { 1, 0, 15, 8, 19, 0, 0, 1, 2 };
+const int MineSeekerTest::kMineX[] = { 1, 0, 10, 3, 20, 29, 15, 15, 15, 9, 9, 10, 11 };
+const int MineSeekerTest::kMineY[] = { 1, 0, 15, 8, 19, 0, 0, 1, 2, 19, 17, 17, 17 };
 const int MineSeekerTest::kNumMines = ARRAYSIZE(MineSeekerTest::kMineX);
 
 // Tests creating a new minefield. Examines that the state of the seeker allows
@@ -303,6 +356,97 @@ TEST_F(MineSeekerTest, TestUpdateNeighborsAtPoint) {
   mine_seeker.UpdateConfigurationsAtPosition(1, 0);
   EXPECT_EQ(1, field.NumberOfActiveConfigurations());
   EXPECT_TRUE(field.IsBound());
+}
+
+TEST_F(MineSeekerTest, TestTemporaryStatus) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  for (int x = 0; x < 3; ++x) {
+    for (int y = 0; y < 3; ++y) {
+      EXPECT_EQ(0, mine_seeker.FieldAtPosition(x, y).temporary_status());
+    }
+  }
+  const int kConfiguration1 = 7;
+  EXPECT_TRUE(mine_seeker.PushConfigurationAt(kConfiguration1, 1, 1));
+  const int kExpectedStatusesAfterPush[] = { 1, 1, 1, -1, 0, -1, -1, -1, -1 };
+  const int* expected_status_pos = kExpectedStatusesAfterPush;
+  for (int y = 0; y < 3; ++y) {
+    for (int x = 0; x < 3; ++x) {
+      EXPECT_EQ(*expected_status_pos,
+                mine_seeker.FieldAtPosition(x, y).temporary_status())
+          << "Invalid temporary status at " << x << " " << y;
+      ++expected_status_pos;
+    }
+  }
+  const int kConfiguration2 = 87;
+  EXPECT_FALSE(mine_seeker.PushConfigurationAt(kConfiguration2, 1, 1));
+  mine_seeker.PopConfigurationAt(kConfiguration2, 1, 1);
+
+  EXPECT_FALSE(mine_seeker.PushConfigurationAt(kConfiguration1, 1, 2));
+  mine_seeker.PopConfigurationAt(kConfiguration1, 1, 2);
+
+  mine_seeker.PopConfigurationAt(kConfiguration1, 1, 1);
+
+  for (int x = 0; x < kWidth; ++x) {
+    for (int y = 0; y < kHeight; ++y) {
+      EXPECT_EQ(0, mine_seeker.FieldAtPosition(x, y).temporary_status())
+          << "Invalid temporary status at " << x << " " << y;
+    }
+  }
+}
+
+TEST_F(MineSeekerTest, TestUpdatePairConsistency) {
+  MineSeeker mine_seeker(*mine_sweeper_);
+
+  mine_seeker.UncoverField(0, 2);
+  mine_seeker.UncoverField(1, 2);
+  mine_seeker.UpdateConfigurationsAtPosition(0, 2);
+  mine_seeker.UpdateConfigurationsAtPosition(1, 2);
+
+  {
+    const int kExpectedNumConfigurationsOnBorder = 4;
+    EXPECT_EQ(kExpectedNumConfigurationsOnBorder,
+              mine_seeker.FieldAtPosition(0, 2).NumberOfActiveConfigurations());
+    const int kExpectedNumConfigurationsInside = 7;
+    EXPECT_EQ(kExpectedNumConfigurationsInside,
+              mine_seeker.FieldAtPosition(1, 2).NumberOfActiveConfigurations());
+
+    mine_seeker.UpdatePairConsistency(1, 2, 0, 2);
+    const int kExpectedNumConfigurationsAfterUpdate = 4;
+    EXPECT_EQ(kExpectedNumConfigurationsAfterUpdate,
+              mine_seeker.FieldAtPosition(0, 2).NumberOfActiveConfigurations());
+    EXPECT_EQ(kExpectedNumConfigurationsAfterUpdate,
+              mine_seeker.FieldAtPosition(1, 2).NumberOfActiveConfigurations());
+
+    EXPECT_EQ(0, mine_seeker.uncover_queue_.size());
+    mine_seeker.UpdateNeighborsAtPosition(1, 2);
+    EXPECT_EQ(3, mine_seeker.uncover_queue_.size());
+  }
+
+  mine_seeker.UncoverField(10, 19);
+  mine_seeker.UncoverField(10, 18);
+  mine_seeker.UpdateConfigurationsAtPosition(10, 19);
+  mine_seeker.UpdateConfigurationsAtPosition(10, 18);
+
+  {
+    const int kExpectedNumConfigurationsOnBorder = 4;
+    EXPECT_EQ(
+        kExpectedNumConfigurationsOnBorder,
+        mine_seeker.FieldAtPosition(10, 19).NumberOfActiveConfigurations());
+    const int kExpectedNumConfigurationsInside = 35;
+    EXPECT_EQ(
+        kExpectedNumConfigurationsInside,
+        mine_seeker.FieldAtPosition(10, 18).NumberOfActiveConfigurations());
+    mine_seeker.UpdatePairConsistency(10, 18, 10, 19);
+
+    const int kExpectedNumConfigurationsAfterUpdate = 4;
+    EXPECT_EQ(
+        kExpectedNumConfigurationsAfterUpdate,
+        mine_seeker.FieldAtPosition(10, 19).NumberOfActiveConfigurations());
+    EXPECT_EQ(
+        kExpectedNumConfigurationsAfterUpdate,
+        mine_seeker.FieldAtPosition(10, 18).NumberOfActiveConfigurations());
+  }
 }
 
 }  // namespace mineseeker

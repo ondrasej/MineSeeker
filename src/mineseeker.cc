@@ -26,7 +26,8 @@ namespace mineseeker {
 const int MineSeekerField::kNumPossibleConfigurations = 256;
 
 MineSeekerField::MineSeekerField()
-    : state_(HIDDEN) {
+    : temporary_status_(0),
+      state_(HIDDEN) {
   ResetConfigurations();
 }
 
@@ -182,6 +183,7 @@ const MineSeekerField& MineSeeker::FieldAtPosition(int x, int y) const {
 
 bool MineSeeker::GetSafeFieldCoordinates(FieldCoordinate* coordinates) {
   CHECK_NOTNULL(coordinates);
+  LOG(INFO) << "Asking for a hint";
   ++safe_field_requests_;
   for (int x = 0; x < mine_sweeper_.width(); ++x) {
     for (int y = 0; y < mine_sweeper_.height(); ++y) {
@@ -190,6 +192,7 @@ bool MineSeeker::GetSafeFieldCoordinates(FieldCoordinate* coordinates) {
           && 0 == mine_sweeper_.NumberOfMinesAroundField(x, y)) {
         coordinates->x = x;
         coordinates->y = y;
+        LOG(INFO) << "Got hint: " << x << " " << y;
         return true;
       }
     }
@@ -200,10 +203,12 @@ bool MineSeeker::GetSafeFieldCoordinates(FieldCoordinate* coordinates) {
           && !mine_sweeper_.IsMine(x, y)) {
         coordinates->x = x;
         coordinates->y = y;
+        LOG(INFO) << "Got hint: " << x << " " << y;
         return true;
       }
     }
   }
+  LOG(INFO) << "No hint :(";
   return false;
 }
 
@@ -248,6 +253,7 @@ void MineSeeker::MarkAsMine(int x, int y) {
       || y >= mine_sweeper_.height()) {
     return;
   }
+  LOG(INFO) << "Found mine at " << x << " " << y;
   const MineSeekerField::State state = StateAtPosition(x, y);
   switch (state) {
     case MineSeekerField::HIDDEN:
@@ -284,12 +290,33 @@ void MineSeeker::QueueFieldForUpdate(int x, int y) {
   }
 }
 
+void MineSeeker::QueueFieldPairForUpdate(int x1, int y1, int x2, int y2) {
+  pair_update_queue_.push(std::make_pair(FieldCoordinate(x1, y1),
+                                         FieldCoordinate(x2, y2)));
+}
+
 void MineSeeker::QueueNeighborsForUpdate(int x, int y) {
   for (int i = -1; i <= 1; ++i) {
     for (int j = -1; j <= 1; ++j) {
       if (i != 0 || j != 0) {
         QueueFieldForUpdate(x + i, y + j);
       }
+    }
+  }
+  for (int i = -2; i <= 2; ++i) {
+    for (int j = -2; j <= 2; ++j) {
+      if (i != 0 || j != 0) {
+        QueueFieldPairForUpdate(x, y, x + i, y + j);
+        QueueFieldPairForUpdate(x + i, y + j, x, y);
+      }
+    }
+  }
+}
+
+void MineSeeker::ResetTemporaryStatuses() {
+  for (int x = 0; x < mine_sweeper_.width(); ++x) {
+    for (int y = 0; y < mine_sweeper_.height(); ++y) {
+      state_[x][y].ResetTemporaryStatus();
     }
   }
 }
@@ -315,7 +342,7 @@ void MineSeeker::ResetState() {
 bool MineSeeker::Solve() {
   FieldCoordinate start_coordinates(-1, -1);
   if (!GetSafeFieldCoordinates(&start_coordinates)) {
-    LOG(ERROR) << "There is no safe start field";
+    LOG(INFO) << "There is no safe start field";
     return false;
   }
 
@@ -345,6 +372,12 @@ bool MineSeeker::SolveStep() {
     UpdateConfigurationsAtPosition(coordinates.x, coordinates.y);
     update_queue_.pop();
     return true;
+  } else if (!pair_update_queue_.empty()) {
+    const FieldCoordinate& first = pair_update_queue_.front().first;
+    const FieldCoordinate& second = pair_update_queue_.front().second;
+    UpdatePairConsistency(first.x, first.y, second.x, second.y);
+    pair_update_queue_.pop();
+    return true;
   } else {
     FieldCoordinate safe_spot(-1, -1);
     if (!GetSafeFieldCoordinates(&safe_spot)) {
@@ -358,6 +391,7 @@ bool MineSeeker::SolveStep() {
 
 bool MineSeeker::UncoverField(int x, int y) {
   CheckCoordinatesAreValid(x, y);
+  LOG(INFO) << "Uncovering field " << x << " " << y;
 
   MineSeekerField* const field = &state_[x][y];
   CHECK_EQ(MineSeekerField::HIDDEN, field->state());
@@ -375,6 +409,7 @@ bool MineSeeker::UncoverField(int x, int y) {
 
   if (num_mines_around == 0) {
     // TODO(ondrasej): Refactor this code.
+    field->SetConfiguration(0);
     for (int i = -1; i <= 1; ++i) {
       for (int j = -1; j <= 1; ++j) {
         if (i != 0 || j != 0) {
@@ -405,6 +440,16 @@ void MineSeeker::UpdateConfigurationsAtPosition(int x, int y) {
       }
     }
   }
+
+  for (int i = -2; i <= 2; ++i) {
+    for (int j = -2; j <= 2; ++j) {
+      if (i != 0 || j != 0) {
+        QueueFieldPairForUpdate(x, y, x + i, y + j);
+        QueueFieldPairForUpdate(x + i, y + j, x, y);
+      }
+    }
+  }
+
 
   if (changed_configurations) {
     UpdateNeighborsAtPosition(x, y);
@@ -453,7 +498,45 @@ void MineSeeker::UpdateNeighborsAtPosition(int x, int y) {
       MarkAsMine(updated_field_x, updated_field_y);
     }
   }
-  
+}
+
+void MineSeeker::PopConfigurationAt(int configuration, int x, int y) {
+  for (int bit = 0; bit < 8; ++bit) {
+    const int field_x = x + kMineRelativePositionX[bit];
+    const int field_y = y + kMineRelativePositionY[bit];
+    if (field_x >= 0 && field_y >= 0
+        && field_x < mine_sweeper_.width()
+        && field_y < mine_sweeper_.height()) {
+      const bool configuration_has_a_mine = IsBitSet(configuration, bit);
+      MineSeekerField* const field = &state_[field_x][field_y];
+      if (configuration_has_a_mine) {
+        field->PopTemporaryMine();
+      } else {
+        field->PopTemporaryClearArea();
+      }
+    }
+  }
+}
+
+bool MineSeeker::PushConfigurationAt(int configuration, int x, int y) {
+  bool configuration_was_ok = true;
+  for (int bit = 0; bit < 8; ++bit) {
+    const int field_x = x + kMineRelativePositionX[bit];
+    const int field_y = y + kMineRelativePositionY[bit];
+    if (field_x >= 0 && field_y >= 0
+        && field_x < mine_sweeper_.width()
+        && field_y < mine_sweeper_.height()) {
+      const bool configuration_has_a_mine = IsBitSet(configuration, bit);
+      MineSeekerField* const field = &state_[field_x][field_y];
+      if (configuration_has_a_mine) {
+        configuration_was_ok &= field->PushTemporaryMine();
+      } else {
+        configuration_was_ok &= field->PushTemporaryClearArea();
+      }
+    }
+  }
+
+  return configuration_was_ok;
 }
 
 void MineSeeker::UpdatePairConsistency(int x1, int y1, int x2, int y2) {
@@ -461,6 +544,60 @@ void MineSeeker::UpdatePairConsistency(int x1, int y1, int x2, int y2) {
   CHECK_LE(x1 - x2, 2);
   CHECK_GE(y1 - y2, -2);
   CHECK_LE(y1 - y2, 2);
+
+  if (x1 < 0 || x1 >= mine_sweeper_.width()
+      || y1 < 0 || y1 >= mine_sweeper_.height()
+      || MineSeekerField::UNCOVERED != StateAtPosition(x1, y1)
+      || state_[x1][y1].IsBound()
+      || x2 < 0 || x2 >= mine_sweeper_.width()
+      || y2 < 0 || y2 >= mine_sweeper_.height()
+      || MineSeekerField::UNCOVERED != StateAtPosition(x2, y2)) {
+    return;
+  }
+
+  string state;
+  DebugString(&state);
+  LOG(INFO) << state;
+
+  LOG(INFO) << "Updating pair: " << x1 << " " << y1 << " - " << x2 << " " << y2;
+
+  const vector<bool>& configurations1 = state_[x1][y1].configurations();
+  const vector<bool>& configurations2 = state_[x2][y2].configurations();
+  bool configurations_were_updated = false;
+  for (int configuration1 = 0;
+       configuration1 < MineSeekerField::kNumPossibleConfigurations;
+       ++configuration1) {
+    if (!configurations1[configuration1]) {
+      continue;
+    }
+    CHECK(PushConfigurationAt(configuration1, x1, y1));
+    bool found_matching_configuration = false;
+    for (int configuration2 = 0;
+         configuration2 < MineSeekerField::kNumPossibleConfigurations;
+         ++configuration2) {
+      if (!configurations2[configuration2]) {
+        continue;
+      }
+      if (PushConfigurationAt(configuration2, x2, y2)) {
+        found_matching_configuration = true;
+      }
+      PopConfigurationAt(configuration2, x2, y2);
+      if (found_matching_configuration) {
+        break;
+      }
+    }
+    PopConfigurationAt(configuration1, x1, y1);
+    if (!found_matching_configuration) {
+      LOG(INFO) << "Removing configuration " << configuration1 << " at " << x1
+          << " " << y1;
+      state_[x1][y1].RemoveConfiguration(configuration1);
+      configurations_were_updated = true;
+    }
+  }
+  if (configurations_were_updated) {
+    UpdateConfigurationsAtPosition(x1, y1);
+    UpdateNeighborsAtPosition(x1, y1);
+  }
 }
 
 }  // namespace mineseeker

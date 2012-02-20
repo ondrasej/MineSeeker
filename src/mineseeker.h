@@ -80,9 +80,21 @@ class MineSeekerField {
   // field and false otherwise.
   const vector<bool>& configurations() const { return configurations_; }
 
+  // TODO(ondrasej): Documentation for temporary statuses.
   int temporary_status() const { return temporary_status_; }
-  bool push_temporary_mine();
-  bool push_temporary_clear_area();
+  void PopTemporaryMine() { --temporary_status_; }
+  bool PushTemporaryMine() {
+    bool result = temporary_status_ >= 0;
+    ++temporary_status_;
+    return result;
+  }
+  void PopTemporaryClearArea() { ++temporary_status_; }
+  bool PushTemporaryClearArea() {
+    bool result = temporary_status_ <= 0;
+    --temporary_status_;
+    return result;
+  }
+  void ResetTemporaryStatus() { temporary_status_ = 0; }
   
  private:
   // Resets the configurations - enables all configurations.
@@ -155,6 +167,7 @@ class MineSeeker {
  private:
   typedef vector<vector<MineSeekerField> > MineSeekerState;
   typedef vector<vector<int> > IntMatrix;
+  typedef std::pair<FieldCoordinate, FieldCoordinate> CoordinatePair;
 
   // Checks that the given coordinates are valid. Uses CHECK_GE and CHECK_LT on
   // them.
@@ -175,9 +188,14 @@ class MineSeeker {
   void QueueFieldForUncover(int x, int y);
   void QueueNeighborsForUpdate(int x, int y);
   void QueueFieldForUpdate(int x, int y);
+  void QueueFieldPairForUpdate(int x1, int y1, int x2, int y2);
 
   // Resets the state of the mine seeker.
   void ResetState();
+
+  void ResetTemporaryStatuses();
+  bool PushConfigurationAt(int configuration, int x, int y);
+  void PopConfigurationAt(int configuration, int x, int y);
 
   // Performs a single step of the solution 
   bool SolveStep();
@@ -201,6 +219,7 @@ class MineSeeker {
   // give uncovering a higher priority.
   std::queue<FieldCoordinate> uncover_queue_;
   std::queue<FieldCoordinate> update_queue_;
+  std::queue<CoordinatePair> pair_update_queue_;
 
   // Reference to the mine field on which the mine seeker works.
   const MineSweeper& mine_sweeper_;
@@ -213,8 +232,10 @@ class MineSeeker {
   // puzzle.
   int safe_field_requests_;
 
+  FRIEND_TEST(MineSeekerTest, TestTemporaryStatus);
   FRIEND_TEST(MineSeekerTest, TestUpdateConfigurationsAtPoint);
   FRIEND_TEST(MineSeekerTest, TestUpdateNeighborsAtPoint);
+  FRIEND_TEST(MineSeekerTest, TestUpdatePairConsistency);
   FRIEND_TEST(MineSeekerTest, TestUncoverFieldWithNoMine);
 };
 
