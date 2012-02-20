@@ -54,7 +54,7 @@ SConsEnvironment.UnitTest = UnitTest
 
 # TODO(ondrasej): Debug/optimization flags?
 # TODO(ondrasej): Add ignored warnings to a list?
-env = Environment(CCFLAGS='-Isrc -g -Wall -Werror -Wno-sign-compare -Iinclude')
+env = Environment(CCFLAGS='-Isrc -O3 -Wall -Werror -Wno-sign-compare -Iinclude')
 
 env.Library('minesweeper',
             ['minesweeper.cc', 'mineseeker.cc'],
