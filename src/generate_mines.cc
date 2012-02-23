@@ -16,6 +16,7 @@
 // MineSeeker. If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdlib.h>
+#include <time.h>
 #include <iostream>
 #include <set>
 #include "gflags/gflags.h"
@@ -23,7 +24,9 @@
 
 DEFINE_int32(width, 30, "The width of the mine field.");
 DEFINE_int32(height, 16, "The height of the mine field.");
-DEFINE_int32(mines, 99, "The number of mines on the minefield");
+DEFINE_int32(mines, 99, "The number of mines on the minefield.");
+DEFINE_int32(seed, 0, "The seed for the random number generator. When set to "
+                      "0, a seed based on system time is used.");
 
 int main(int argc, char* argv[]) {
   if (FLAGS_width <= 0) {
@@ -42,6 +45,11 @@ int main(int argc, char* argv[]) {
     LOG(ERROR) << "Too many mines: " << FLAGS_mines;
     return 1;
   }
+  int seed = FLAGS_seed;
+  if (seed == 0) {
+    seed = time(NULL);
+  }
+  srand(seed);
 
   std::cout << FLAGS_width << " " << FLAGS_height << std::endl;
   std::cout << FLAGS_mines << std::endl;
