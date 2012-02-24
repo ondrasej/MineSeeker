@@ -117,6 +117,33 @@ struct FieldCoordinate {
 
 // Implements the mine seeking algorithm. Uses propagation and tree search to
 // prove the fields contain mines or not.
+//
+// The seeker does not implement the placement of mines directly, but through
+// the configurations of mines around the fields that were already uncovered.
+// Each possible configuration corresponds to a possible placement of the mines
+// (with eight neighbor fields, this gives 256 possible configurations). The
+// solver than proceeds by removing configurations that are not compatible with
+// the current evidence and with possible configurations of other fields. Then,
+// if all possible configurations contain a mine (or an empty field) at a
+// certain position, than the field at this position is proven to contain a mine
+// (or be empty).
+//
+// Currently, two types of filtering of compatible configurations are availabe.
+// 1. "node consistency" for removing configurations based on fields around,
+// 2. "pairwise consistency" in this case, the solver check that for a pair of
+//    fields f1 and f2, each configuration of f1 is consistent with at least
+//    one possible configuration of f2.
+// If the solver does can't discover any more empty fields or mines using these
+// strategies, it asks for a safe spot.
+// Though the two techniques are not strong enough for all situations, they can
+// be used to solve most of them.
+// However, even with global consistency (using backtracking), there are
+// ambiguous situations which cannot be decided without guessing. In such
+// situations, the solver asks the game for uncovering a single "empty" field
+// that is still hidden. The solver remembers the number of such fields it asked
+// for.
+// TODO(ondrasej): Full backtracking.
+// TODO(ondrasej): Take the number of remaining mines into account.
 class MineSeeker {
  public:
   explicit MineSeeker(const MineSweeper& mine_sweeper);
