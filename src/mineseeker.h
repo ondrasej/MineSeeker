@@ -80,7 +80,9 @@ class MineSeekerField {
   // field and false otherwise.
   const vector<bool>& configurations() const { return configurations_; }
 
-  // TODO(ondrasej): Documentation for temporary statuses.
+  // Methods for manipulating the temporary status of the field used by
+  // MineSeeker::PushConfigurationAt and MineSeeker::PopConfigurationAt. See the
+  // description of these methods for more detail.
   int temporary_status() const { return temporary_status_; }
   void PopTemporaryMine() { --temporary_status_; }
   bool PushTemporaryMine() {
@@ -142,6 +144,14 @@ struct FieldCoordinate {
 // situations, the solver asks the game for uncovering a single "empty" field
 // that is still hidden. The solver remembers the number of such fields it asked
 // for.
+//
+// The solver works asynchronously, by performing a single elimination step at a
+// time. To avoid problems with cycles and stack overflow, the solver uses
+// queues with different priorities for uncovering fields and updating the
+// allowed configurations. Uncovering fields and marking them with mines has the
+// highest prioirity, followed by updating single fields and updating pairs of
+// fields.
+//
 // TODO(ondrasej): Full backtracking.
 // TODO(ondrasej): Take the number of remaining mines into account.
 class MineSeeker {
@@ -152,6 +162,7 @@ class MineSeeker {
   // the knowledge about the other fields.
   bool ConfigurationFitsAt(int configuration, int x, int y) const;
 
+  // Quick access to the state of the field at the given position.
   const MineSeekerField& FieldAtPosition(int x, int y) const;
   MineSeekerField::State StateAtPosition(int x, int y) const;
 
@@ -189,6 +200,10 @@ class MineSeeker {
   // Returns the number of times the solver requested a safe field.
   int safe_field_requests() const { return safe_field_requests_; }
 
+  // Exports the state of the solver to a string that can be printed to stdout.
+  // The state is printed as a matrix with dots for hidden fields, stars for
+  // mines and numbers for uncovered fields (and with space for uncovered fields
+  // with no mines in the neighborhood).
   void DebugString(string* out) const;
 
  private:
@@ -212,6 +227,7 @@ class MineSeeker {
   // the solver gets stuck).
   bool GetSafeFieldCoordinates(FieldCoordinate* coordinates);
 
+  // Methods for adding fields to the queue to be processed.
   void QueueFieldForUncover(int x, int y);
   void QueueNeighborsForUpdate(int x, int y);
   void QueueFieldForUpdate(int x, int y);
@@ -220,7 +236,22 @@ class MineSeeker {
   // Resets the state of the mine seeker.
   void ResetState();
 
+  // Methods for working with temporary configurations for backtracking and
+  // pairwise consistency. These methods keep track of mines and clear fields of
+  // the temporary configurations. For each field, these methods keep track of
+  // the state of the field in a single integer. This integer contains a
+  // positive number if the field contains a mine (and the value is the number
+  // of times, how many configurations in the neighborhood with a mine on that
+  // field were pushed) or a negative number, if the field is empty. If the
+  // value is 0, the state of the field is not known and both a mine or an empty
+  // field can be assigned to it.
+  //
+  // Resets the temporary configurations.
   void ResetTemporaryStatuses();
+  // Places a temporary configuration at the given field. Returns true if the
+  // configuration was consistent with the contents of the field. Even if this
+  // method returns false, the configuration is pushed and the corresponding
+  // call to PopConfigurationAt needs to be done again.
   bool PushConfigurationAt(int configuration, int x, int y);
   void PopConfigurationAt(int configuration, int x, int y);
 
